@@ -121,3 +121,33 @@ export function computeProbabilities(
       return computeDisadvantageProbabilities(sides, missMax, weakMax, modifier);
   }
 }
+
+export function computeOptimalThresholds(
+  sides: number,
+  baselineMiss: number,
+  baselineWeak: number,
+  baselineStrong: number
+): DiceThresholds {
+  const maxSum = sides * 2;
+  let bestDeviation = Infinity;
+  let bestMissMax = 0;
+  let bestWeakMax = 0;
+
+  for (let missMax = 2; missMax < maxSum; missMax++) {
+    for (let weakMax = missMax + 1; weakMax < maxSum; weakMax++) {
+      const result = computeNormalProbabilities(sides, missMax, weakMax, 0);
+      const deviation =
+        Math.abs(result.miss - baselineMiss) +
+        Math.abs(result.weakHit - baselineWeak) +
+        Math.abs(result.strongHit - baselineStrong);
+
+      if (deviation < bestDeviation) {
+        bestDeviation = deviation;
+        bestMissMax = missMax;
+        bestWeakMax = weakMax;
+      }
+    }
+  }
+
+  return { missMax: bestMissMax, weakMax: bestWeakMax };
+}

@@ -4,6 +4,7 @@ import {
   computeAdvantageProbabilities,
   computeDisadvantageProbabilities,
   computeProbabilities,
+  computeOptimalThresholds,
 } from '../engine';
 
 describe('computeNormalProbabilities', () => {
@@ -87,5 +88,35 @@ describe('computeProbabilities', () => {
     const direct = computeDisadvantageProbabilities(6, 6, 9, 0);
     const dispatched = computeProbabilities(6, 6, 9, 0, 'disadvantage');
     expect(dispatched).toEqual(direct);
+  });
+});
+
+describe('computeOptimalThresholds', () => {
+  const baselineMiss = (15 / 36) * 100;
+  const baselineWeak = (15 / 36) * 100;
+  const baselineStrong = (6 / 36) * 100;
+
+  it('maps d6 back to itself', () => {
+    const result = computeOptimalThresholds(6, baselineMiss, baselineWeak, baselineStrong);
+    expect(result.missMax).toBe(6);
+    expect(result.weakMax).toBe(9);
+  });
+
+  it('maps d8 to 8/12', () => {
+    const result = computeOptimalThresholds(8, baselineMiss, baselineWeak, baselineStrong);
+    expect(result.missMax).toBe(8);
+    expect(result.weakMax).toBe(12);
+  });
+
+  it('maps d10 to 10/15', () => {
+    const result = computeOptimalThresholds(10, baselineMiss, baselineWeak, baselineStrong);
+    expect(result.missMax).toBe(10);
+    expect(result.weakMax).toBe(15);
+  });
+
+  it('maps d12 to 11/17', () => {
+    const result = computeOptimalThresholds(12, baselineMiss, baselineWeak, baselineStrong);
+    expect(result.missMax).toBe(11);
+    expect(result.weakMax).toBe(17);
   });
 });
