@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TTRPG Dice Probability Visualizer</title>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1>TTRPG Dice Probability Visualizer</h1>
+      <div class="controls">
+        <div class="legend">
+          <div class="legend-item"><div class="legend-swatch miss"></div>Miss</div>
+          <div class="legend-item"><div class="legend-swatch weak"></div>Weak Hit</div>
+          <div class="legend-item"><div class="legend-swatch strong"></div>Strong Hit</div>
+        </div>
+        <div class="controls-right">
+          <label>Min: <input type="number" id="min-mod" value="-2"></label>
+          <label>Max: <input type="number" id="max-mod" value="5"></label>
+          <button id="dis-toggle" class="toggle-btn dis active">Disadvantage</button>
+          <button id="adv-toggle" class="toggle-btn adv active">Advantage</button>
+        </div>
+      </div>
+    </header>
+    <div id="dice-rows"></div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
