@@ -35,6 +35,10 @@ function init(): void {
     const val = parseInt(minInput.value, 10);
     if (!isNaN(val)) {
       minMod = val;
+      if (minMod > maxMod) {
+        maxMod = minMod;
+        maxInput.value = String(maxMod);
+      }
       update();
     }
   });
@@ -43,6 +47,10 @@ function init(): void {
     const val = parseInt(maxInput.value, 10);
     if (!isNaN(val)) {
       maxMod = val;
+      if (maxMod < minMod) {
+        minMod = maxMod;
+        minInput.value = String(minMod);
+      }
       update();
     }
   });
