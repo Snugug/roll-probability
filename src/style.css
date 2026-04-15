@@ -42,10 +42,6 @@ body {
   gap: 8px;
 }
 
-.header-legend {
-  margin-bottom: 10px;
-}
-
 .header-controls {
   display: flex;
   align-items: center;
@@ -53,28 +49,6 @@ body {
   flex-wrap: wrap;
 }
 
-.legend {
-  display: flex;
-  gap: 12px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: #aaa;
-}
-
-.legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-.legend-swatch.miss { background: #f87171; }
-.legend-swatch.weak { background: #facc15; }
-.legend-swatch.strong { background: #4ade80; }
 
 .mod-inputs {
   margin-left: auto;
@@ -229,11 +203,25 @@ body {
   font-weight: 700;
 }
 
-.dice-ranges {
+.dice-range-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
-  color: #666;
-  margin-left: 8px;
+  color: #aaa;
+  margin-left: 10px;
 }
+
+.range-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.range-swatch-miss { background: #f87171; }
+.range-swatch-weak { background: #facc15; }
+.range-swatch-strong { background: #4ade80; }
 
 /* ── Bar Chart ── */
 

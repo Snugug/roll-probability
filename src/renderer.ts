@@ -37,13 +37,26 @@ function renderDiceRow(
   label.textContent = config.label;
   header.appendChild(label);
 
-  const ranges = document.createElement('span');
-  ranges.className = 'dice-ranges';
-  ranges.textContent =
-    'Miss: ' + config.count + '\u2013' + config.missMax +
-    ' | Weak: ' + (config.missMax + 1) + '\u2013' + config.weakMax +
-    ' | Strong: ' + (config.weakMax + 1) + '+';
-  header.appendChild(ranges);
+  const rangeItems: Array<{ cls: string; name: string; range: string }> = [
+    { cls: 'miss', name: 'Miss', range: config.count + '\u2013' + config.missMax },
+    { cls: 'weak', name: 'Weak Hit', range: (config.missMax + 1) + '\u2013' + config.weakMax },
+    { cls: 'strong', name: 'Strong Hit', range: (config.weakMax + 1) + '+' },
+  ];
+
+  for (const item of rangeItems) {
+    const rangeEl = document.createElement('span');
+    rangeEl.className = 'dice-range-item';
+
+    const swatch = document.createElement('span');
+    swatch.className = 'range-swatch range-swatch-' + item.cls;
+    rangeEl.appendChild(swatch);
+
+    const text = document.createElement('span');
+    text.textContent = item.name + ' ' + item.range;
+    rangeEl.appendChild(text);
+
+    header.appendChild(rangeEl);
+  }
 
   row.appendChild(header);
 
