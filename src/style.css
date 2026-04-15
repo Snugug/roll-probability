@@ -42,7 +42,11 @@ body {
   gap: 8px;
 }
 
-.header-bottom {
+.header-legend {
+  margin-bottom: 10px;
+}
+
+.header-controls {
   display: flex;
   align-items: center;
   gap: 12px;
