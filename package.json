@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
-    "test": "vitest run --coverage"
+    "test": "vitest run --coverage",
+    "build": "vite build"
   },
   "packageManager": "pnpm@10.30.3",
   "private": true,
