@@ -100,8 +100,8 @@ describe('main — loadSettings', () => {
   it('uses defaults when no localStorage data', async () => {
     const init = await loadInit();
     init();
-    expect(document.querySelectorAll('dice-row').length).toBe(4);
-    expect(document.querySelectorAll('.dice-pill').length).toBe(4);
+    expect(document.querySelectorAll('dice-row').length).toBe(3);
+    expect(document.querySelectorAll('.dice-pill').length).toBe(3);
   });
 
   it('loads saved settings from localStorage', async () => {
@@ -125,14 +125,14 @@ describe('main — loadSettings', () => {
     localStorage.setItem(STORAGE_KEY, 'not-json!!!');
     const init = await loadInit();
     init();
-    expect(document.querySelectorAll('dice-row').length).toBe(4);
+    expect(document.querySelectorAll('dice-row').length).toBe(3);
   });
 
   it('falls back to defaults when diceList is not an array', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ diceList: 'bad' }));
     const init = await loadInit();
     init();
-    expect(document.querySelectorAll('dice-row').length).toBe(4);
+    expect(document.querySelectorAll('dice-row').length).toBe(3);
   });
 
   it('uses field defaults for missing fields', async () => {
@@ -251,10 +251,10 @@ describe('main — removeDice', () => {
     const init = await loadInit();
     init();
 
-    expect(document.querySelectorAll('dice-row').length).toBe(4);
+    expect(document.querySelectorAll('dice-row').length).toBe(3);
     const removeBtn = document.querySelector('.dice-pill button') as HTMLButtonElement;
     removeBtn.click();
-    expect(document.querySelectorAll('dice-row').length).toBe(3);
+    expect(document.querySelectorAll('dice-row').length).toBe(2);
   });
 });
 
@@ -371,7 +371,7 @@ describe('main — persistence', () => {
     init();
 
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    expect(saved.diceList).toEqual(['2d6', '2d8', '2d10', '2d12']);
+    expect(saved.diceList).toEqual(['2d6', '2d12', '1d20']);
     expect(saved.minMod).toBe(-2);
     expect(saved.maxMod).toBe(5);
     expect(saved.showAdvantage).toBe(true);

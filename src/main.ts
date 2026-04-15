@@ -17,7 +17,7 @@ interface SavedSettings {
 }
 
 const DEFAULTS: SavedSettings = {
-  diceList: ['2d6', '2d8', '2d10', '2d12'],
+  diceList: ['2d6', '2d12', '1d20'],
   minMod: -2,
   maxMod: 5,
   showAdvantage: true,
