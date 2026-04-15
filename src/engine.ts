@@ -12,100 +12,109 @@ export interface DiceThresholds {
 }
 
 export interface DiceConfig {
+  count: number;
   sides: number;
   label: string;
   missMax: number;
   weakMax: number;
 }
 
-export function computeNormalProbabilities(
+function classifyOutcomes(
+  numDice: number,
   sides: number,
   missMax: number,
   weakMax: number,
-  modifier: number
+  modifier: number,
+  sumFn: (dice: number[]) => number
 ): ProbabilityResult {
   let missCount = 0;
   let weakCount = 0;
   let strongCount = 0;
-  const total = sides * sides;
+  let total = 0;
+  const dice = new Array<number>(numDice);
 
-  for (let d1 = 1; d1 <= sides; d1++) {
-    for (let d2 = 1; d2 <= sides; d2++) {
-      const sum = d1 + d2 + modifier;
+  function recurse(depth: number): void {
+    if (depth === numDice) {
+      total++;
+      const sum = sumFn(dice) + modifier;
       if (sum <= missMax) missCount++;
       else if (sum <= weakMax) weakCount++;
       else strongCount++;
+      return;
+    }
+    for (let v = 1; v <= sides; v++) {
+      dice[depth] = v;
+      recurse(depth + 1);
     }
   }
+
+  recurse(0);
 
   return {
     miss: (missCount / total) * 100,
     weakHit: (weakCount / total) * 100,
     strongHit: (strongCount / total) * 100,
   };
+}
+
+function sumAll(dice: number[]): number {
+  let s = 0;
+  for (let i = 0; i < dice.length; i++) s += dice[i];
+  return s;
+}
+
+function sumDropLowest(dice: number[]): number {
+  let s = 0;
+  let min = dice[0];
+  for (let i = 0; i < dice.length; i++) {
+    s += dice[i];
+    if (dice[i] < min) min = dice[i];
+  }
+  return s - min;
+}
+
+function sumDropHighest(dice: number[]): number {
+  let s = 0;
+  let max = dice[0];
+  for (let i = 0; i < dice.length; i++) {
+    s += dice[i];
+    if (dice[i] > max) max = dice[i];
+  }
+  return s - max;
+}
+
+export function computeNormalProbabilities(
+  count: number,
+  sides: number,
+  missMax: number,
+  weakMax: number,
+  modifier: number
+): ProbabilityResult {
+  return classifyOutcomes(count, sides, missMax, weakMax, modifier, sumAll);
 }
 
 export function computeAdvantageProbabilities(
+  count: number,
   sides: number,
   missMax: number,
   weakMax: number,
   modifier: number
 ): ProbabilityResult {
-  let missCount = 0;
-  let weakCount = 0;
-  let strongCount = 0;
-  const total = sides * sides * sides;
-
-  for (let d1 = 1; d1 <= sides; d1++) {
-    for (let d2 = 1; d2 <= sides; d2++) {
-      for (let d3 = 1; d3 <= sides; d3++) {
-        const min = Math.min(d1, d2, d3);
-        const sum = d1 + d2 + d3 - min + modifier;
-        if (sum <= missMax) missCount++;
-        else if (sum <= weakMax) weakCount++;
-        else strongCount++;
-      }
-    }
-  }
-
-  return {
-    miss: (missCount / total) * 100,
-    weakHit: (weakCount / total) * 100,
-    strongHit: (strongCount / total) * 100,
-  };
+  return classifyOutcomes(count + 1, sides, missMax, weakMax, modifier, sumDropLowest);
 }
 
 export function computeDisadvantageProbabilities(
+  count: number,
   sides: number,
   missMax: number,
   weakMax: number,
   modifier: number
 ): ProbabilityResult {
-  let missCount = 0;
-  let weakCount = 0;
-  let strongCount = 0;
-  const total = sides * sides * sides;
-
-  for (let d1 = 1; d1 <= sides; d1++) {
-    for (let d2 = 1; d2 <= sides; d2++) {
-      for (let d3 = 1; d3 <= sides; d3++) {
-        const max = Math.max(d1, d2, d3);
-        const sum = d1 + d2 + d3 - max + modifier;
-        if (sum <= missMax) missCount++;
-        else if (sum <= weakMax) weakCount++;
-        else strongCount++;
-      }
-    }
-  }
-
-  return {
-    miss: (missCount / total) * 100,
-    weakHit: (weakCount / total) * 100,
-    strongHit: (strongCount / total) * 100,
-  };
+  return classifyOutcomes(count + 1, sides, missMax, weakMax, modifier, sumDropHighest);
 }
 
 export function computeProbabilities(
+  count: number,
   sides: number,
   missMax: number,
   weakMax: number,
@@ -114,28 +123,30 @@ export function computeProbabilities(
 ): ProbabilityResult {
   switch (mode) {
     case 'normal':
-      return computeNormalProbabilities(sides, missMax, weakMax, modifier);
+      return computeNormalProbabilities(count, sides, missMax, weakMax, modifier);
     case 'advantage':
-      return computeAdvantageProbabilities(sides, missMax, weakMax, modifier);
+      return computeAdvantageProbabilities(count, sides, missMax, weakMax, modifier);
     case 'disadvantage':
-      return computeDisadvantageProbabilities(sides, missMax, weakMax, modifier);
+      return computeDisadvantageProbabilities(count, sides, missMax, weakMax, modifier);
   }
 }
 
 export function computeOptimalThresholds(
+  count: number,
   sides: number,
   baselineMiss: number,
   baselineWeak: number,
   baselineStrong: number
 ): DiceThresholds {
-  const maxSum = sides * 2;
+  const minSum = count;
+  const maxSum = count * sides;
   let bestDeviation = Infinity;
   let bestMissMax = 0;
   let bestWeakMax = 0;
 
-  for (let missMax = 2; missMax < maxSum; missMax++) {
+  for (let missMax = minSum; missMax < maxSum; missMax++) {
     for (let weakMax = missMax + 1; weakMax < maxSum; weakMax++) {
-      const result = computeNormalProbabilities(sides, missMax, weakMax, 0);
+      const result = computeNormalProbabilities(count, sides, missMax, weakMax, 0);
       const deviation =
         Math.abs(result.miss - baselineMiss) +
         Math.abs(result.weakHit - baselineWeak) +
@@ -150,4 +161,13 @@ export function computeOptimalThresholds(
   }
 
   return { missMax: bestMissMax, weakMax: bestWeakMax };
+}
+
+export function parseDiceNotation(input: string): { count: number; sides: number } | null {
+  const match = input.trim().match(/^(\d+)[dD](\d+)$/);
+  if (!match) return null;
+  const count = parseInt(match[1], 10);
+  const sides = parseInt(match[2], 10);
+  if (count < 1 || sides < 2) return null;
+  return { count, sides };
 }
