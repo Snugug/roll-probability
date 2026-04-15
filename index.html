@@ -8,26 +8,28 @@
 <body>
   <div id="app">
     <header class="app-header">
-      <h1>TTRPG Dice Probability Visualizer</h1>
-      <div class="controls">
+      <div class="header-top">
+        <h1>TTRPG Dice Probability Visualizer</h1>
+        <div class="header-toggles">
+          <button id="dis-toggle" class="toggle-btn dis active">Disadvantage</button>
+          <button id="adv-toggle" class="toggle-btn adv active">Advantage</button>
+        </div>
+      </div>
+      <div class="header-bottom">
         <div class="legend">
           <div class="legend-item"><div class="legend-swatch miss"></div>Miss</div>
           <div class="legend-item"><div class="legend-swatch weak"></div>Weak Hit</div>
           <div class="legend-item"><div class="legend-swatch strong"></div>Strong Hit</div>
         </div>
-        <div class="controls-right">
-          <label>Min: <input type="number" id="min-mod" value="-2"></label>
-          <label>Max: <input type="number" id="max-mod" value="5"></label>
-          <button id="dis-toggle" class="toggle-btn dis active">Disadvantage</button>
-          <button id="adv-toggle" class="toggle-btn adv active">Advantage</button>
-        </div>
-      </div>
-      <div class="dice-input-area">
-        <div class="dice-input-row">
-          <input type="text" id="dice-input" placeholder="e.g. 3d8">
-          <button id="dice-add" class="toggle-btn">Add</button>
+        <div class="dice-input-group">
+          <input type="text" id="dice-input" placeholder="3d8">
+          <button id="dice-add" class="dice-add-btn" aria-label="Add dice">+</button>
         </div>
         <div id="dice-pills" class="dice-pills"></div>
+        <div class="mod-inputs">
+          <label>Min: <input type="number" id="min-mod" value="-2"></label>
+          <label>Max: <input type="number" id="max-mod" value="5"></label>
+        </div>
       </div>
     </header>
     <div id="dice-rows"></div>
