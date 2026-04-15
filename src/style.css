@@ -115,6 +115,61 @@ body {
   opacity: 0.4;
 }
 
+/* ── Dice Input ── */
+
+.dice-input-area {
+  margin-top: 12px;
+}
+
+.dice-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dice-input-row input[type="text"] {
+  width: 100px;
+  background: #12121f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.dice-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dice-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #12121f;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 2px 8px 2px 10px;
+  font-size: 12px;
+  color: #e0e0e0;
+}
+
+.dice-pill button {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.dice-pill button:hover {
+  color: #f87171;
+}
+
 /* ── Dice Rows ── */
 
 .dice-row {

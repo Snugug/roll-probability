@@ -40,7 +40,7 @@ function renderDiceRow(
   const ranges = document.createElement('span');
   ranges.className = 'dice-ranges';
   ranges.textContent =
-    'Miss: 2\u2013' + config.missMax +
+    'Miss: ' + config.count + '\u2013' + config.missMax +
     ' | Weak: ' + (config.missMax + 1) + '\u2013' + config.weakMax +
     ' | Strong: ' + (config.weakMax + 1) + '+';
   header.appendChild(ranges);
@@ -105,7 +105,7 @@ function renderBarColumn(
   for (const { mode, show } of modes) {
     if (!show) continue;
     const result = computeProbabilities(
-      config.sides, config.missMax, config.weakMax, modifier, mode
+      config.count, config.sides, config.missMax, config.weakMax, modifier, mode
     );
     group.appendChild(renderStackedBar(result));
   }
