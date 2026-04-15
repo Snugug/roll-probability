@@ -59,7 +59,7 @@ function buildConfig(label: string): DiceConfig | null {
   };
 }
 
-function init(): void {
+export function init(): void {
   const settings = loadSettings();
   const diceConfigs: DiceConfig[] = [];
 
@@ -138,10 +138,7 @@ function init(): void {
     const label = parsed.count + 'd' + parsed.sides;
     if (diceConfigs.some(c => c.label === label)) return;
 
-    const config = buildConfig(label);
-    if (!config) return;
-
-    diceConfigs.push(config);
+    diceConfigs.push(buildConfig(label)!);
     diceInput.value = '';
     update();
   }

@@ -46,7 +46,7 @@ class BarColumn extends HTMLElement {
 
     const norLabel = document.createElement('span');
     norLabel.className = 'type-nor';
-    norLabel.textContent = 'nrm';
+    norLabel.textContent = 'base';
     typeRow.appendChild(norLabel);
 
     if (this.showAdvantage) {
@@ -141,9 +141,9 @@ class DiceRowElement extends HTMLElement {
   }
 }
 
-customElements.define('stacked-bar', StackedBar);
-customElements.define('bar-column', BarColumn);
-customElements.define('dice-row', DiceRowElement);
+if (!customElements.get('stacked-bar')) customElements.define('stacked-bar', StackedBar);
+if (!customElements.get('bar-column')) customElements.define('bar-column', BarColumn);
+if (!customElements.get('dice-row')) customElements.define('dice-row', DiceRowElement);
 
 export function renderPage(
   container: HTMLElement,
