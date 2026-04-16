@@ -425,14 +425,19 @@ class DiceRowElement extends HTMLElement {
       container.removeChild(container.firstChild);
     }
 
+    const barsWrapper = document.createElement('div');
+    barsWrapper.className = 'bars';
+
     for (let mod = this.minMod; mod <= this.maxMod; mod++) {
       const col = document.createElement('bar-column') as BarColumn;
       col.config = this.config;
       col.modifier = mod;
       col.showAdvantage = this.showAdvantage;
       col.showDisadvantage = this.showDisadvantage;
-      container.appendChild(col);
+      barsWrapper.appendChild(col);
     }
+
+    container.appendChild(barsWrapper);
   }
 
   private _onThresholdChange() {

@@ -393,11 +393,22 @@ dialog::backdrop {
 }
 
 .dialog-preview .bars {
+  display: flex;
+  flex-direction: row;
   gap: 3px;
 }
 
-.dialog-preview stacked-bar {
-  height: 100px;
+.dialog-preview .bar-group {
+  height: 80px;
+}
+
+.dialog-preview .bar-type-row span {
+  font-size: 6px;
+}
+
+.dialog-preview .mod-label {
+  font-size: 8px;
+  margin-top: 2px;
 }
 
 /* ── Preset Chips ── */
