@@ -513,6 +513,9 @@ class DiceRowElement extends HTMLElement {
   }
 
   private _onThresholdChange() {
+    // Keep config.presetName in sync with this.presetName
+    this.config.presetName = this.presetName;
+
     // Update preview
     const preview = this._dialog.querySelector('.dialog-preview');
     if (preview) {
