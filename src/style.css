@@ -355,6 +355,7 @@ dialog {
   border: 1px solid #333;
   border-radius: 12px;
   padding: 0;
+  margin: auto;
   width: calc(100% - 40px);
   max-width: 1200px;
   height: calc(100vh - 40px);

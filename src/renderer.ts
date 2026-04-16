@@ -168,6 +168,10 @@ class DiceRowElement extends HTMLElement {
   private _customPresets: SavedCustomPreset[] = [];
 
   connectedCallback() {
+    if (this.config.presetName) {
+      this.presetName = this.config.presetName;
+    }
+
     const header = document.createElement('div');
     header.className = 'dice-header';
 
@@ -339,16 +343,24 @@ class DiceRowElement extends HTMLElement {
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.value = this.presetName;
-    nameInput.addEventListener('change', () => {
+
+    // Find the active chip element to update its text live
+    const activeChipForName = chipsContainer.querySelector('.preset-chip.active') as HTMLElement | null;
+
+    nameInput.addEventListener('input', () => {
       const oldName = this.presetName;
       this.presetName = nameInput.value;
+      // Live-update the chip label
+      if (activeChipForName) {
+        activeChipForName.textContent = this.presetName;
+      }
       // Update the custom preset in storage
       const custom = this._customPresets.find(p => p.name === oldName);
       if (custom) {
         custom.name = this.presetName;
         saveCustomPreset(custom).catch(() => {});
       }
-      this._buildDialogContent();
+      this._onThresholdChange();
     });
     nameInputContainer.appendChild(nameInput);
 

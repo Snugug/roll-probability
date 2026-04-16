@@ -40,6 +40,7 @@ export interface DiceConfig {
   label: string;
   thresholds: number[];
   categories: ThresholdCategory[];
+  presetName?: string;
 }
 
 export const PBTA_PRESET: ThresholdPreset = {

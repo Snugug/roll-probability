@@ -37,6 +37,7 @@ async function buildConfigWithSaved(label: string): Promise<DiceConfig | null> {
       label,
       thresholds: saved.thresholds,
       categories: saved.categories,
+      presetName: saved.presetName,
     };
   }
 
