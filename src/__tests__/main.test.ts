@@ -3,6 +3,7 @@ import {
   saveSettings,
   saveDiceThresholds,
   loadSettings,
+  loadDiceThresholds,
   type SavedSettings,
 } from '../thresholds';
 
@@ -366,6 +367,35 @@ describe('main — persistence', () => {
     await new Promise(r => setTimeout(r, 0));
     const saved = await loadSettings();
     expect(saved.diceList).toEqual(['2d6', '2d8']);
+  });
+
+  it('saves dice thresholds to IndexedDB when config changes via dialog', async () => {
+    const init = await loadInit();
+    await init();
+
+    // Get the dice-row element and trigger its onConfigChange callback
+    const row = document.querySelector('dice-row') as any;
+    if (row && row.onConfigChange) {
+      const newConfig = {
+        count: 2, sides: 6, label: '2d6',
+        thresholds: [6, 11],
+        categories: [
+          { label: 'Bad', color: '#ff0000' },
+          { label: 'OK', color: '#ffff00' },
+          { label: 'Good', color: '#00ff00' },
+        ],
+        minMod: -1,
+        maxMod: 3,
+      };
+      row.onConfigChange(newConfig, 'Custom');
+      await new Promise(r => setTimeout(r, 50));
+      const saved = await loadDiceThresholds('2d6');
+      expect(saved).not.toBeNull();
+      expect(saved!.presetName).toBe('Custom');
+      expect(saved!.thresholds).toEqual([6, 11]);
+      expect(saved!.minMod).toBe(-1);
+      expect(saved!.maxMod).toBe(3);
+    }
   });
 });
 

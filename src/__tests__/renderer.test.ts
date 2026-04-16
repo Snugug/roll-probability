@@ -32,6 +32,15 @@ const config1d20: DiceConfig = {
 
 let container: HTMLElement;
 
+function deepConfig(cfg: typeof config2d6, overrides: Partial<typeof config2d6> = {}): typeof config2d6 {
+  return {
+    ...cfg,
+    thresholds: [...cfg.thresholds],
+    categories: cfg.categories.map(c => ({ ...c })),
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -203,6 +212,80 @@ describe('dialog', () => {
     const dialog = container.querySelector('dialog')!;
     const nameInput = dialog.querySelector('.preset-name-input') as HTMLElement;
     expect(nameInput.style.display).toBe('none');
+  });
+});
+
+describe('dialog interactivity', () => {
+  it('switching to D&D preset updates categories to 7', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    // Wait for custom presets to load
+    await new Promise(r => setTimeout(r, 50));
+    // Click D&D chip
+    const chips = row._dialog.querySelectorAll('.preset-chip');
+    const dndChip = Array.from(chips).find((c: any) => c.textContent === 'D&D') as HTMLButtonElement;
+    dndChip.click();
+    const rows = row._dialog.querySelectorAll('.threshold-row');
+    expect(rows.length).toBe(7);
+  });
+
+  it('switching to PbtA preset updates categories to 3', async () => {
+    renderPage(container, [deepConfig(config1d20, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const chips = row._dialog.querySelectorAll('.preset-chip');
+    const pbtaChip = Array.from(chips).find((c: any) => c.textContent === 'PbtA') as HTMLButtonElement;
+    pbtaChip.click();
+    const rows = row._dialog.querySelectorAll('.threshold-row');
+    expect(rows.length).toBe(3);
+  });
+
+  it('clicking + creates a custom preset chip', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const customChips = row._dialog.querySelectorAll('.preset-chip-custom');
+    expect(customChips.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('clicking add threshold adds a row', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // First create a custom preset so inputs are unlocked
+    const addPresetBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addPresetBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const initialRows = row._dialog.querySelectorAll('.threshold-row').length;
+    const addThresholdBtn = row._dialog.querySelector('.threshold-add') as HTMLButtonElement;
+    addThresholdBtn.click();
+    const rows = row._dialog.querySelectorAll('.threshold-row');
+    expect(rows.length).toBe(initialRows + 1);
+  });
+
+  it('clicking remove threshold removes a row', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create custom preset to unlock
+    const addPresetBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addPresetBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const initialRows = row._dialog.querySelectorAll('.threshold-row').length;
+    const removeBtns = row._dialog.querySelectorAll('.threshold-remove');
+    (removeBtns[0] as HTMLButtonElement).click();
+    const rows = row._dialog.querySelectorAll('.threshold-row');
+    expect(rows.length).toBe(initialRows - 1);
+  });
+
+  it('floor row shows upper bound label', () => {
+    renderPage(container, [deepConfig(config2d6)], false, false);
+    const floorLabel = container.querySelector('.threshold-floor-label');
+    expect(floorLabel).toBeTruthy();
+    expect(floorLabel!.textContent).toBe('\u22646'); // thresholds[0] is 7, so 7-1=6
   });
 });
 

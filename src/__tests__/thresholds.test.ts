@@ -262,4 +262,14 @@ describe('migrateFromLocalStorage', () => {
       showDisadvantage: true,
     });
   });
+
+  it('handles invalid JSON in localStorage gracefully', async () => {
+    localStorage.setItem('dice-visualizer-settings', 'not valid json!!!');
+    await migrateFromLocalStorage();
+    // catch block does not call removeItem, so key should still be present
+    expect(localStorage.getItem('dice-visualizer-settings')).toBe('not valid json!!!');
+    // Settings should be defaults since migration failed
+    const settings = await loadSettings();
+    expect(settings.diceList).toEqual(['2d6', '2d12', '1d20']);
+  });
 });
