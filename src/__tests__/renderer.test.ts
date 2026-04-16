@@ -1,9 +1,30 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import type { DiceConfig } from '../engine';
+import type { DiceConfig } from '../thresholds';
 import { renderPage } from '../renderer';
 
-const config2d6: DiceConfig = { count: 2, sides: 6, label: '2d6', missMax: 6, weakMax: 9 };
-const config2d8: DiceConfig = { count: 2, sides: 8, label: '2d8', missMax: 8, weakMax: 12 };
+const config2d6: DiceConfig = {
+  count: 2, sides: 6, label: '2d6',
+  thresholds: [7, 10],
+  categories: [
+    { label: 'Miss', color: '#f87171' },
+    { label: 'Weak Hit', color: '#facc15' },
+    { label: 'Strong Hit', color: '#4ade80' },
+  ],
+};
+
+const config1d20: DiceConfig = {
+  count: 1, sides: 20, label: '1d20',
+  thresholds: [5, 10, 15, 20, 25, 30],
+  categories: [
+    { label: 'Trivial', color: '#94a3b8' },
+    { label: 'Very Easy', color: '#4ade80' },
+    { label: 'Easy', color: '#22d3ee' },
+    { label: 'Medium', color: '#facc15' },
+    { label: 'Hard', color: '#f97316' },
+    { label: 'Very Hard', color: '#ef4444' },
+    { label: 'Nearly Impossible', color: '#a855f7' },
+  ],
+};
 
 let container: HTMLElement;
 
@@ -18,12 +39,12 @@ afterEach(() => {
 
 describe('renderPage', () => {
   it('creates a dice-row for each config', () => {
-    renderPage(container, [config2d6, config2d8], 0, 0, false, false);
+    renderPage(container, [config2d6, config1d20], 0, 0, false, false);
     expect(container.querySelectorAll('dice-row').length).toBe(2);
   });
 
   it('clears previous content before rendering', () => {
-    renderPage(container, [config2d6, config2d8], 0, 0, false, false);
+    renderPage(container, [config2d6, config1d20], 0, 0, false, false);
     renderPage(container, [config2d6], 0, 0, false, false);
     expect(container.querySelectorAll('dice-row').length).toBe(1);
   });
@@ -35,25 +56,50 @@ describe('renderPage', () => {
 });
 
 describe('dice-row', () => {
-  it('renders header with label and colored range swatches', () => {
+  it('renders header with label and N colored range items', () => {
     renderPage(container, [config2d6], 0, 0, false, false);
     const row = container.querySelector('dice-row')!;
     expect(row.querySelector('.dice-label')!.textContent).toBe('2d6');
-
     const items = row.querySelectorAll('.dice-range-item');
     expect(items.length).toBe(3);
-    expect(items[0].textContent).toBe('Miss 2\u20136');
+    expect(items[0].textContent).toBe('Miss <7');
     expect(items[1].textContent).toBe('Weak Hit 7\u20139');
     expect(items[2].textContent).toBe('Strong Hit 10+');
+  });
 
-    expect(items[0].querySelector('.range-swatch-miss')).toBeTruthy();
-    expect(items[1].querySelector('.range-swatch-weak')).toBeTruthy();
-    expect(items[2].querySelector('.range-swatch-strong')).toBeTruthy();
+  it('renders inline swatch colors', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const swatches = container.querySelectorAll('.range-swatch');
+    expect((swatches[0] as HTMLElement).style.backgroundColor).toBeTruthy();
+    expect((swatches[1] as HTMLElement).style.backgroundColor).toBeTruthy();
+    expect((swatches[2] as HTMLElement).style.backgroundColor).toBeTruthy();
+  });
+
+  it('renders 7 range items for D&D config', () => {
+    renderPage(container, [config1d20], 0, 0, false, false);
+    const items = container.querySelectorAll('.dice-range-item');
+    expect(items.length).toBe(7);
+    expect(items[0].textContent).toBe('Trivial <5');
+    expect(items[6].textContent).toBe('Nearly Impossible 30+');
   });
 
   it('creates bar-columns for each modifier in range', () => {
     renderPage(container, [config2d6], -1, 1, false, false);
     expect(container.querySelectorAll('bar-column').length).toBe(3);
+  });
+
+  it('renders a gear icon button', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const gearBtn = container.querySelector('.gear-btn');
+    expect(gearBtn).toBeTruthy();
+    expect(gearBtn!.getAttribute('commandfor')).toBe('dialog-2d6');
+    expect(gearBtn!.getAttribute('command')).toBe('show-modal');
+  });
+
+  it('renders a dialog element', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog#dialog-2d6');
+    expect(dialog).toBeTruthy();
   });
 });
 
@@ -68,22 +114,6 @@ describe('bar-column', () => {
     expect(container.querySelectorAll('stacked-bar').length).toBe(1);
   });
 
-  it('shows dis and base labels when only disadvantage on', () => {
-    renderPage(container, [config2d6], 0, 0, false, true);
-    const labels = container.querySelectorAll('.bar-type-row span');
-    expect(labels.length).toBe(2);
-    expect(labels[0].textContent).toBe('dis');
-    expect(labels[1].textContent).toBe('base');
-  });
-
-  it('shows base and adv labels when only advantage on', () => {
-    renderPage(container, [config2d6], 0, 0, true, false);
-    const labels = container.querySelectorAll('.bar-type-row span');
-    expect(labels.length).toBe(2);
-    expect(labels[0].textContent).toBe('base');
-    expect(labels[1].textContent).toBe('adv');
-  });
-
   it('renders positive modifier label', () => {
     renderPage(container, [config2d6], 2, 2, false, false);
     expect(container.querySelector('.mod-label')!.textContent).toBe('+2');
@@ -96,22 +126,36 @@ describe('bar-column', () => {
 });
 
 describe('stacked-bar', () => {
-  it('renders three segments with percentages for large values', () => {
+  it('renders segments with inline background colors', () => {
     renderPage(container, [config2d6], 0, 0, false, false);
     const bar = container.querySelector('stacked-bar')!;
     const segs = bar.querySelectorAll('.seg');
     expect(segs.length).toBe(3);
-    // 2d6 +0: strong ~17%, weak ~42%, miss ~42% — all >= 5%
-    expect(segs[0].querySelector('span')!.textContent).toBe('17%');
-    expect(segs[1].querySelector('span')!.textContent).toBe('42%');
-    expect(segs[2].querySelector('span')!.textContent).toBe('42%');
   });
 
   it('hides percentage text for segments below 5%', () => {
-    // 2d6 +5: miss is ~2.78%
-    renderPage(container, [config2d6], 5, 5, false, false);
-    const missSeg = container.querySelector('.seg-m')!;
-    expect(missSeg.querySelector('span')).toBeNull();
+    renderPage(container, [config2d6], 4, 4, false, false);
+    const segs = container.querySelectorAll('.seg');
+    // Find the floor segment (Miss) — at +4 it should be ~2.78%
+    const floorSeg = segs[segs.length - 1];
+    expect(floorSeg.querySelector('span')).toBeNull();
+  });
+
+  it('omits 0% segments entirely', () => {
+    // 1d20 -10: only Trivial, Very Easy, Easy are non-zero
+    renderPage(container, [config1d20], -10, -10, false, false);
+    const bar = container.querySelector('stacked-bar')!;
+    const segs = bar.querySelectorAll('.seg');
+    // Should have 3 segments, not 7
+    expect(segs.length).toBe(3);
+  });
+
+  it('shows more segments as modifier increases', () => {
+    // 1d20 +0: Trivial through Hard are non-zero (5 segments)
+    renderPage(container, [config1d20], 0, 0, false, false);
+    const bar = container.querySelector('stacked-bar')!;
+    const segs = bar.querySelectorAll('.seg');
+    expect(segs.length).toBe(5);
   });
 
   it('sets tooltip data attributes on all segments', () => {

@@ -1,27 +1,33 @@
-import { computeProbabilities, type DiceConfig, type ProbabilityResult, type RollMode } from './engine';
+import { computeProbabilities, type RollMode } from './engine';
+import type { DiceConfig, ThresholdCategory } from './thresholds';
+
+interface SegmentData {
+  label: string;
+  color: string;
+  percent: number;
+}
 
 class StackedBar extends HTMLElement {
-  result!: ProbabilityResult;
+  segments!: SegmentData[];
 
   connectedCallback() {
-    const segments: Array<{ value: number; className: string; tooltipLabel: string }> = [
-      { value: this.result.strongHit, className: 'seg seg-s', tooltipLabel: 'Strong Hit' },
-      { value: this.result.weakHit, className: 'seg seg-w', tooltipLabel: 'Weak Hit' },
-      { value: this.result.miss, className: 'seg seg-m', tooltipLabel: 'Miss' },
-    ];
+    // Render from last category to first (highest at top, floor at bottom)
+    for (let i = this.segments.length - 1; i >= 0; i--) {
+      const seg = this.segments[i];
+      if (seg.percent === 0) continue;
 
-    for (const seg of segments) {
       const el = document.createElement('div');
-      el.className = seg.className;
-      el.style.flex = String(seg.value);
+      el.className = 'seg';
+      el.style.backgroundColor = seg.color;
+      el.style.flex = String(seg.percent);
 
-      if (seg.value >= 5) {
+      if (seg.percent >= 5) {
         const span = document.createElement('span');
-        span.textContent = Math.round(seg.value) + '%';
+        span.textContent = Math.round(seg.percent) + '%';
         el.appendChild(span);
       }
 
-      el.dataset.tooltip = seg.tooltipLabel + ': ' + seg.value.toFixed(2) + '%';
+      el.dataset.tooltip = seg.label + ': ' + seg.percent.toFixed(2) + '%';
       this.appendChild(el);
     }
   }
@@ -69,11 +75,16 @@ class BarColumn extends HTMLElement {
 
     for (const { mode, show } of modes) {
       if (!show) continue;
-      const result = computeProbabilities(
-        this.config.count, this.config.sides, this.config.missMax, this.config.weakMax, this.modifier, mode
+      const probabilities = computeProbabilities(
+        this.config.count, this.config.sides, this.config.thresholds, this.modifier, mode
       );
+      const segments: SegmentData[] = probabilities.map((percent, i) => ({
+        label: this.config.categories[i].label,
+        color: this.config.categories[i].color,
+        percent,
+      }));
       const bar = document.createElement('stacked-bar') as StackedBar;
-      bar.result = result;
+      bar.segments = segments;
       group.appendChild(bar);
     }
 
@@ -84,6 +95,44 @@ class BarColumn extends HTMLElement {
     modLabel.textContent = this.modifier >= 0 ? '+' + this.modifier : String(this.modifier);
     this.appendChild(modLabel);
   }
+}
+
+function createGearSvg(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '16');
+  svg.setAttribute('height', '16');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.5');
+
+  // Center circle
+  const circle = document.createElementNS(ns, 'circle');
+  circle.setAttribute('cx', '8');
+  circle.setAttribute('cy', '8');
+  circle.setAttribute('r', '2.5');
+  svg.appendChild(circle);
+
+  // 8 lines radiating outward
+  const lineCount = 8;
+  for (let i = 0; i < lineCount; i++) {
+    const angle = (i * 360) / lineCount;
+    const rad = (angle * Math.PI) / 180;
+    const x1 = 8 + Math.cos(rad) * 4.5;
+    const y1 = 8 + Math.sin(rad) * 4.5;
+    const x2 = 8 + Math.cos(rad) * 6.5;
+    const y2 = 8 + Math.sin(rad) * 6.5;
+
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', x1.toFixed(2));
+    line.setAttribute('y1', y1.toFixed(2));
+    line.setAttribute('x2', x2.toFixed(2));
+    line.setAttribute('y2', y2.toFixed(2));
+    svg.appendChild(line);
+  }
+
+  return svg;
 }
 
 class DiceRowElement extends HTMLElement {
@@ -102,28 +151,51 @@ class DiceRowElement extends HTMLElement {
     label.textContent = this.config.label;
     header.appendChild(label);
 
-    const rangeItems: Array<{ cls: string; name: string; range: string }> = [
-      { cls: 'miss', name: 'Miss', range: this.config.count + '\u2013' + this.config.missMax },
-      { cls: 'weak', name: 'Weak Hit', range: (this.config.missMax + 1) + '\u2013' + this.config.weakMax },
-      { cls: 'strong', name: 'Strong Hit', range: (this.config.weakMax + 1) + '+' },
-    ];
+    const { thresholds, categories } = this.config;
 
-    for (const item of rangeItems) {
+    for (let i = 0; i < categories.length; i++) {
+      const cat = categories[i];
+      let rangeText: string;
+      if (i === 0) {
+        // Floor category: <threshold[0]
+        rangeText = '<' + thresholds[0];
+      } else if (i === categories.length - 1) {
+        // Ceiling category: threshold[i-1]+
+        rangeText = thresholds[i - 1] + '+';
+      } else {
+        // Middle category: threshold[i-1]–threshold[i]-1
+        rangeText = thresholds[i - 1] + '\u2013' + (thresholds[i] - 1);
+      }
+
       const rangeEl = document.createElement('span');
       rangeEl.className = 'dice-range-item';
 
       const swatch = document.createElement('span');
-      swatch.className = 'range-swatch range-swatch-' + item.cls;
+      swatch.className = 'range-swatch';
+      swatch.style.backgroundColor = cat.color;
       rangeEl.appendChild(swatch);
 
       const text = document.createElement('span');
-      text.textContent = item.name + ' ' + item.range;
+      text.textContent = cat.label + ' ' + rangeText;
       rangeEl.appendChild(text);
 
       header.appendChild(rangeEl);
     }
 
+    // Gear icon button
+    const gearBtn = document.createElement('button');
+    gearBtn.className = 'gear-btn';
+    gearBtn.setAttribute('commandfor', 'dialog-' + this.config.label);
+    gearBtn.setAttribute('command', 'show-modal');
+    gearBtn.appendChild(createGearSvg());
+    header.appendChild(gearBtn);
+
     this.appendChild(header);
+
+    // Dialog placeholder
+    const dialog = document.createElement('dialog');
+    dialog.id = 'dialog-' + this.config.label;
+    this.appendChild(dialog);
 
     const barsContainer = document.createElement('div');
     barsContainer.className = 'bars';
