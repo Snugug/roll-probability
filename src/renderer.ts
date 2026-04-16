@@ -292,7 +292,10 @@ class DiceRowElement extends HTMLElement {
     });
     chipsContainer.appendChild(addPresetBtn);
 
-    this._dialog.appendChild(chipsContainer);
+    // Editor wrapper — contains chips, name input, modifiers, thresholds, add button
+    const editorWrapper = document.createElement('div');
+    editorWrapper.className = 'dialog-editor-wrapper';
+    editorWrapper.appendChild(chipsContainer);
 
     // Preset name input
     const nameInputContainer = document.createElement('div');
@@ -325,7 +328,7 @@ class DiceRowElement extends HTMLElement {
     });
     nameInputContainer.appendChild(nameInput);
 
-    this._dialog.appendChild(nameInputContainer);
+    editorWrapper.appendChild(nameInputContainer);
 
     // Modifier range inputs
     const modContainer = document.createElement('div');
@@ -371,7 +374,7 @@ class DiceRowElement extends HTMLElement {
     });
     modContainer.appendChild(maxModInput);
 
-    this._dialog.appendChild(modContainer);
+    editorWrapper.appendChild(modContainer);
 
     // Threshold editor
     const editor = document.createElement('div');
@@ -434,7 +437,7 @@ class DiceRowElement extends HTMLElement {
       editor.appendChild(row);
     }
 
-    this._dialog.appendChild(editor);
+    editorWrapper.appendChild(editor);
 
     // Add threshold button
     const addBtn = document.createElement('button');
@@ -450,7 +453,9 @@ class DiceRowElement extends HTMLElement {
       this._onThresholdChange();
       this._buildDialogContent();
     });
-    this._dialog.appendChild(addBtn);
+    editorWrapper.appendChild(addBtn);
+
+    this._dialog.appendChild(editorWrapper);
   }
 
   private _renderPreviewBars(container: HTMLElement) {
