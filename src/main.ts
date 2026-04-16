@@ -114,11 +114,14 @@ export async function init(): Promise<void> {
       categories: config.categories,
       thresholds: config.thresholds,
     }).catch(() => {});
+  }
+
+  function handleDialogClose(): void {
     update();
   }
 
   function update(): void {
-    renderPage(rowsContainer, diceConfigs, minMod, maxMod, showAdvantage, showDisadvantage, handleConfigChange);
+    renderPage(rowsContainer, diceConfigs, minMod, maxMod, showAdvantage, showDisadvantage, handleConfigChange, handleDialogClose);
     renderPills();
     save();
   }

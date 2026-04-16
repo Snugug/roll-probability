@@ -114,32 +114,42 @@ function createGearSvg(): SVGSVGElement {
   svg.setAttribute('viewBox', '0 0 16 16');
   svg.setAttribute('fill', 'none');
   svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '1.5');
+  svg.setAttribute('stroke-width', '1.2');
+  svg.setAttribute('stroke-linejoin', 'round');
 
-  // Center circle
+  // Gear body: outer toothed ring
+  const teeth = 6;
+  const outerR = 6.8;
+  const innerR = 5.2;
+  const toothWidth = 0.45; // half-angle of each tooth in radians
+  const cx = 8;
+  const cy = 8;
+  let d = '';
+  for (let i = 0; i < teeth; i++) {
+    const angle = (i * 2 * Math.PI) / teeth - Math.PI / 2;
+    const a1 = angle - toothWidth;
+    const a2 = angle + toothWidth;
+    const gapMid = angle + Math.PI / teeth;
+    const g1 = gapMid - toothWidth;
+    const g2 = gapMid + toothWidth;
+    if (i === 0) {
+      d += 'M' + (cx + outerR * Math.cos(a1)).toFixed(2) + ',' + (cy + outerR * Math.sin(a1)).toFixed(2);
+    }
+    d += 'L' + (cx + outerR * Math.cos(a2)).toFixed(2) + ',' + (cy + outerR * Math.sin(a2)).toFixed(2);
+    d += 'L' + (cx + innerR * Math.cos(g1)).toFixed(2) + ',' + (cy + innerR * Math.sin(g1)).toFixed(2);
+    d += 'L' + (cx + innerR * Math.cos(g2)).toFixed(2) + ',' + (cy + innerR * Math.sin(g2)).toFixed(2);
+  }
+  d += 'Z';
+  const gearPath = document.createElementNS(ns, 'path');
+  gearPath.setAttribute('d', d);
+  svg.appendChild(gearPath);
+
+  // Center hole
   const circle = document.createElementNS(ns, 'circle');
   circle.setAttribute('cx', '8');
   circle.setAttribute('cy', '8');
-  circle.setAttribute('r', '2.5');
+  circle.setAttribute('r', '2');
   svg.appendChild(circle);
-
-  // 8 lines radiating outward
-  const lineCount = 8;
-  for (let i = 0; i < lineCount; i++) {
-    const angle = (i * 360) / lineCount;
-    const rad = (angle * Math.PI) / 180;
-    const x1 = 8 + Math.cos(rad) * 4.5;
-    const y1 = 8 + Math.sin(rad) * 4.5;
-    const x2 = 8 + Math.cos(rad) * 6.5;
-    const y2 = 8 + Math.sin(rad) * 6.5;
-
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('x1', x1.toFixed(2));
-    line.setAttribute('y1', y1.toFixed(2));
-    line.setAttribute('x2', x2.toFixed(2));
-    line.setAttribute('y2', y2.toFixed(2));
-    svg.appendChild(line);
-  }
 
   return svg;
 }
@@ -152,6 +162,7 @@ class DiceRowElement extends HTMLElement {
   showDisadvantage = true;
   presetName = 'PbtA';
   onConfigChange?: (config: DiceConfig, presetName: string) => void;
+  onDialogClose?: () => void;
 
   private _dialog!: HTMLDialogElement;
   private _customPresets: SavedCustomPreset[] = [];
@@ -180,6 +191,9 @@ class DiceRowElement extends HTMLElement {
     // Dialog
     this._dialog = document.createElement('dialog');
     this._dialog.id = 'dialog-' + this.config.label;
+    this._dialog.addEventListener('close', () => {
+      if (this.onDialogClose) this.onDialogClose();
+    });
     this._buildDialogContent();
     this.appendChild(this._dialog);
 
@@ -507,7 +521,8 @@ export function renderPage(
   maxMod: number,
   showAdvantage: boolean,
   showDisadvantage: boolean,
-  onConfigChange?: (index: number, config: DiceConfig, presetName: string) => void
+  onConfigChange?: (index: number, config: DiceConfig, presetName: string) => void,
+  onDialogClose?: () => void
 ): void {
   while (container.firstChild) {
     container.removeChild(container.firstChild);
@@ -526,6 +541,9 @@ export function renderPage(
       row.onConfigChange = (cfg, presetName) => {
         onConfigChange(idx, cfg, presetName);
       };
+    }
+    if (onDialogClose) {
+      row.onDialogClose = onDialogClose;
     }
     container.appendChild(row);
   }
