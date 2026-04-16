@@ -109,47 +109,14 @@ class BarColumn extends HTMLElement {
 function createGearSvg(): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('width', '16');
-  svg.setAttribute('height', '16');
-  svg.setAttribute('viewBox', '0 0 16 16');
-  svg.setAttribute('fill', 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '1.2');
-  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('width', '18');
+  svg.setAttribute('height', '18');
+  svg.setAttribute('viewBox', '0 -960 960 960');
+  svg.setAttribute('fill', 'currentColor');
 
-  // Gear body: outer toothed ring
-  const teeth = 6;
-  const outerR = 6.8;
-  const innerR = 5.2;
-  const toothWidth = 0.45; // half-angle of each tooth in radians
-  const cx = 8;
-  const cy = 8;
-  let d = '';
-  for (let i = 0; i < teeth; i++) {
-    const angle = (i * 2 * Math.PI) / teeth - Math.PI / 2;
-    const a1 = angle - toothWidth;
-    const a2 = angle + toothWidth;
-    const gapMid = angle + Math.PI / teeth;
-    const g1 = gapMid - toothWidth;
-    const g2 = gapMid + toothWidth;
-    if (i === 0) {
-      d += 'M' + (cx + outerR * Math.cos(a1)).toFixed(2) + ',' + (cy + outerR * Math.sin(a1)).toFixed(2);
-    }
-    d += 'L' + (cx + outerR * Math.cos(a2)).toFixed(2) + ',' + (cy + outerR * Math.sin(a2)).toFixed(2);
-    d += 'L' + (cx + innerR * Math.cos(g1)).toFixed(2) + ',' + (cy + innerR * Math.sin(g1)).toFixed(2);
-    d += 'L' + (cx + innerR * Math.cos(g2)).toFixed(2) + ',' + (cy + innerR * Math.sin(g2)).toFixed(2);
-  }
-  d += 'Z';
-  const gearPath = document.createElementNS(ns, 'path');
-  gearPath.setAttribute('d', d);
-  svg.appendChild(gearPath);
-
-  // Center hole
-  const circle = document.createElementNS(ns, 'circle');
-  circle.setAttribute('cx', '8');
-  circle.setAttribute('cy', '8');
-  circle.setAttribute('r', '2');
-  svg.appendChild(circle);
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', 'm370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z');
+  svg.appendChild(path);
 
   return svg;
 }
