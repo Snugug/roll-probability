@@ -1,3 +1,5 @@
+import { parseDiceNotation } from './engine';
+
 export interface ThresholdCategory {
   label: string;
   color: string;
@@ -45,3 +47,26 @@ export const DND_PRESET: ThresholdPreset = {
 };
 
 export const BUILTIN_PRESETS: ThresholdPreset[] = [PBTA_PRESET, DND_PRESET];
+
+export function mapThresholds(
+  preset: ThresholdPreset,
+  targetCount: number,
+  targetSides: number
+): number[] {
+  const ref = parseDiceNotation(preset.referenceDie);
+  if (!ref) return preset.thresholds;
+
+  const refMin = ref.count;
+  const refMax = ref.count * ref.sides;
+  const refRange = refMax - refMin;
+
+  const targetMin = targetCount;
+  const targetMax = targetCount * targetSides;
+  const targetRange = targetMax - targetMin;
+
+  if (refRange === 0) return preset.thresholds;
+
+  return preset.thresholds.map(t => {
+    return targetMin + Math.round(((t - refMin) / refRange) * targetRange);
+  });
+}
