@@ -292,10 +292,11 @@ class DiceRowElement extends HTMLElement {
     });
     chipsContainer.appendChild(addPresetBtn);
 
-    // Editor wrapper — contains chips, name input, modifiers, thresholds, add button
+    this._dialog.appendChild(chipsContainer);
+
+    // Editor wrapper — contains name input, modifiers, thresholds, add button
     const editorWrapper = document.createElement('div');
     editorWrapper.className = 'dialog-editor-wrapper';
-    editorWrapper.appendChild(chipsContainer);
 
     // Preset name input
     const nameInputContainer = document.createElement('div');
