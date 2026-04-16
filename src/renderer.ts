@@ -333,15 +333,15 @@ class DiceRowElement extends HTMLElement {
     nameInput.type = 'text';
     nameInput.value = this.presetName;
 
-    // Find the active chip element to update its text live
-    const activeChipForName = chipsContainer.querySelector('.preset-chip.active') as HTMLElement | null;
+    // Find the active custom chip's select button to update its text live
+    const activeChipLabel = chipsContainer.querySelector('.preset-chip-custom.active .preset-chip-select') as HTMLElement | null;
 
     nameInput.addEventListener('input', () => {
       const oldName = this.presetName;
       this.presetName = nameInput.value;
       // Live-update the chip label
-      if (activeChipForName) {
-        activeChipForName.textContent = this.presetName;
+      if (activeChipLabel) {
+        activeChipLabel.textContent = this.presetName;
       }
       // Update the custom preset in storage
       const custom = this._customPresets.find(p => p.name === oldName);
