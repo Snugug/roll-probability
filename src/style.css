@@ -471,7 +471,6 @@ dialog::backdrop {
   background: #4ade80;
   color: #000;
   border-color: #4ade80;
-  font-weight: 600;
 }
 
 .preset-chip-add {
@@ -507,7 +506,6 @@ dialog::backdrop {
 
 .preset-chip-custom.active .preset-chip-select {
   color: #000;
-  font-weight: 600;
 }
 
 .preset-chip-delete {
