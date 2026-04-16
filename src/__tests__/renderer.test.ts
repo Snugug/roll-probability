@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { DiceConfig } from '../thresholds';
+import * as thresholds from '../thresholds';
 import { renderPage } from '../renderer';
 
 const config2d6: DiceConfig = {
@@ -346,6 +347,45 @@ describe('dialog interactivity', () => {
     expect(row._dialog.querySelectorAll('.threshold-row').length).toBe(3);
   });
 
+  it('close button calls dialog.close()', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const closeBtn = row._dialog.querySelector('.dialog-close') as HTMLButtonElement;
+    closeBtn.click();
+    // dialog.close() fires the 'close' event, which triggers onDialogClose
+    expect(row._dialog.open).toBeFalsy();
+  });
+
+  it('dialog close event fires onDialogClose callback', async () => {
+    let closeCalled = false;
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false, undefined, () => { closeCalled = true; });
+    const row = container.querySelector('dice-row') as any;
+    row._dialog.showModal();
+    row._dialog.close();
+    expect(closeCalled).toBe(true);
+  });
+
+  it('deleting a non-active custom preset keeps current preset', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create two custom presets
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    // The second one is active. Delete the first (non-active) one.
+    const customChips = row._dialog.querySelectorAll('.preset-chip-custom');
+    expect(customChips.length).toBe(2);
+    const firstDeleteBtn = customChips[0].querySelector('.preset-chip-delete') as HTMLButtonElement;
+    firstDeleteBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    // First custom removed, second still active
+    expect(row._dialog.querySelectorAll('.preset-chip-custom').length).toBe(1);
+  });
+
   it('deleting a custom preset removes its chip', async () => {
     renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
     const row = container.querySelector('dice-row') as any;
@@ -362,6 +402,20 @@ describe('dialog interactivity', () => {
     expect(row._dialog.querySelectorAll('.preset-chip-custom').length).toBe(0);
   });
 
+  it('creates custom preset locally even if IndexedDB save fails', async () => {
+    const spy = vi.spyOn(thresholds, 'saveCustomPreset').mockRejectedValue(new Error('DB error'));
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    // Should still create the custom preset locally despite save failure
+    const customChips = row._dialog.querySelectorAll('.preset-chip-custom');
+    expect(customChips.length).toBeGreaterThanOrEqual(1);
+    spy.mockRestore();
+  });
+
   it('editing preset name updates chip label live', async () => {
     renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
     const row = container.querySelector('dice-row') as any;
@@ -375,6 +429,29 @@ describe('dialog interactivity', () => {
     nameInput.dispatchEvent(new Event('input'));
     const selectBtn = row._dialog.querySelector('.preset-chip-select') as HTMLElement;
     expect(selectBtn.textContent).toBe('My Preset');
+  });
+
+  it('threshold change calls onConfigChange callback', async () => {
+    let callbackConfig: DiceConfig | null = null;
+    let callbackPreset = '';
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false, (_idx, cfg, preset) => {
+      callbackConfig = cfg;
+      callbackPreset = preset;
+    });
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create custom to unlock
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    // Edit a threshold — this triggers _onThresholdChange which calls onConfigChange
+    const numInputs = row._dialog.querySelectorAll('.threshold-row input[type="number"]');
+    const firstNum = numInputs[0] as HTMLInputElement;
+    firstNum.value = '8';
+    firstNum.dispatchEvent(new Event('input'));
+    expect(callbackConfig).not.toBeNull();
+    expect(callbackConfig!.thresholds[0]).toBe(8);
+    expect(callbackPreset).toContain('Custom');
   });
 
   it('threshold change works without onConfigChange callback', async () => {
