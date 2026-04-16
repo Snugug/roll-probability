@@ -1,70 +1,54 @@
-import { computeOptimalThresholds, parseDiceNotation, type DiceConfig } from './engine';
+import { parseDiceNotation } from './engine';
+import {
+  PBTA_PRESET,
+  mapThresholds,
+  loadSettings,
+  saveSettings,
+  loadDiceThresholds,
+  migrateFromLocalStorage,
+  type DiceConfig,
+} from './thresholds';
 import { renderPage } from './renderer';
 import './style.css';
-
-const BASELINE_MISS = (15 / 36) * 100;
-const BASELINE_WEAK = (15 / 36) * 100;
-const BASELINE_STRONG = (6 / 36) * 100;
-
-const STORAGE_KEY = 'dice-visualizer-settings';
-
-interface SavedSettings {
-  diceList: string[];
-  minMod: number;
-  maxMod: number;
-  showAdvantage: boolean;
-  showDisadvantage: boolean;
-}
-
-const DEFAULTS: SavedSettings = {
-  diceList: ['2d6', '2d12', '1d20'],
-  minMod: -2,
-  maxMod: 5,
-  showAdvantage: true,
-  showDisadvantage: true,
-};
-
-function loadSettings(): SavedSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULTS };
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.diceList)) return { ...DEFAULTS };
-    return {
-      diceList: parsed.diceList.filter((s: unknown) => typeof s === 'string'),
-      minMod: typeof parsed.minMod === 'number' ? parsed.minMod : DEFAULTS.minMod,
-      maxMod: typeof parsed.maxMod === 'number' ? parsed.maxMod : DEFAULTS.maxMod,
-      showAdvantage: typeof parsed.showAdvantage === 'boolean' ? parsed.showAdvantage : DEFAULTS.showAdvantage,
-      showDisadvantage: typeof parsed.showDisadvantage === 'boolean' ? parsed.showDisadvantage : DEFAULTS.showDisadvantage,
-    };
-  } catch {
-    return { ...DEFAULTS };
-  }
-}
-
-function saveSettings(settings: SavedSettings): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-}
 
 function buildConfig(label: string): DiceConfig | null {
   const parsed = parseDiceNotation(label);
   if (!parsed) return null;
-  const t = computeOptimalThresholds(parsed.count, parsed.sides, BASELINE_MISS, BASELINE_WEAK, BASELINE_STRONG);
+  const thresholds = mapThresholds(PBTA_PRESET, parsed.count, parsed.sides);
   return {
     count: parsed.count,
     sides: parsed.sides,
     label,
-    missMax: t.missMax,
-    weakMax: t.weakMax,
+    thresholds,
+    categories: PBTA_PRESET.categories,
   };
 }
 
-export function init(): void {
-  const settings = loadSettings();
+async function buildConfigWithSaved(label: string): Promise<DiceConfig | null> {
+  const parsed = parseDiceNotation(label);
+  if (!parsed) return null;
+
+  const saved = await loadDiceThresholds(label);
+  if (saved) {
+    return {
+      count: parsed.count,
+      sides: parsed.sides,
+      label,
+      thresholds: saved.thresholds,
+      categories: saved.categories,
+    };
+  }
+
+  return buildConfig(label);
+}
+
+export async function init(): Promise<void> {
+  await migrateFromLocalStorage();
+  const settings = await loadSettings();
   const diceConfigs: DiceConfig[] = [];
 
   for (const label of settings.diceList) {
-    const config = buildConfig(label);
+    const config = await buildConfigWithSaved(label);
     if (config) diceConfigs.push(config);
   }
 
@@ -187,4 +171,4 @@ export function init(): void {
   update();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => { init(); });
