@@ -146,6 +146,31 @@ describe('main — loadSettings', () => {
     expect(firstRowItems[2].textContent).toContain('Strong Hit');
   });
 
+  it('defaults minMod/maxMod when saved thresholds lack them', async () => {
+    await saveSettings({
+      diceList: ['2d6'],
+      showAdvantage: true,
+      showDisadvantage: true,
+    });
+    // Save thresholds without minMod/maxMod (simulating legacy data)
+    await saveDiceThresholds('2d6', {
+      presetName: 'PbtA',
+      thresholds: [7, 10],
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Weak Hit', color: '#facc15' },
+        { label: 'Strong Hit', color: '#4ade80' },
+      ],
+    } as any);
+    const init = await loadInit();
+    await init();
+    // Should use defaults -2 and 5
+    expect(document.querySelectorAll('dice-row').length).toBe(1);
+    const bars = document.querySelector('.bars')!;
+    // -2 to 5 = 8 bar columns
+    expect(bars.querySelectorAll('bar-column').length).toBe(8);
+  });
+
   it('uses saved thresholds from IndexedDB when available', async () => {
     await saveSettings({
       diceList: ['2d6'],

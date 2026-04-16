@@ -12,9 +12,8 @@ import {
 import { renderPage } from './renderer';
 import './style.css';
 
-function buildConfig(label: string): DiceConfig | null {
-  const parsed = parseDiceNotation(label);
-  if (!parsed) return null;
+function buildConfig(label: string): DiceConfig {
+  const parsed = parseDiceNotation(label)!;
   const thresholds = mapThresholds(PBTA_PRESET, parsed.count, parsed.sides);
   return {
     count: parsed.count,

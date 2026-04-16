@@ -63,6 +63,12 @@ describe('mapThresholds', () => {
     expect(result).toEqual([5, 10, 15, 20, 25, 30]);
   });
 
+  it('returns thresholds unchanged when referenceDie is invalid', () => {
+    const preset = { name: 'Bad', referenceDie: 'invalid', thresholds: [5, 10], categories: [] };
+    const result = mapThresholds(preset, 2, 6);
+    expect(result).toEqual([5, 10]);
+  });
+
   it('maps D&D to 2d6 using linear proportional formula', () => {
     // ref 1d20: min=1, max=20, range=19
     // target 2d6: min=2, max=12, range=10

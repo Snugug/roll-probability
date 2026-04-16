@@ -279,6 +279,34 @@ describe('dialog interactivity', () => {
     expect(rows.length).toBe(initialRows + 1);
   });
 
+  it('adding threshold when all removed defaults to 5', async () => {
+    // Start with a 2-category config (1 threshold), create custom, remove the threshold, then add
+    const twoCategory: DiceConfig = {
+      count: 1, sides: 6, label: '1d6',
+      thresholds: [4],
+      categories: [
+        { label: 'Low', color: '#ff0000' },
+        { label: 'High', color: '#00ff00' },
+      ],
+      minMod: 0, maxMod: 0,
+    };
+    renderPage(container, [twoCategory], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addPresetBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addPresetBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    // Remove the only non-floor threshold
+    const removeBtn = row._dialog.querySelector('.threshold-remove') as HTMLButtonElement;
+    removeBtn.click();
+    // Now only floor remains (1 row, 0 thresholds)
+    expect(row.config.thresholds.length).toBe(0);
+    // Add a threshold — should default to 5
+    const addThresholdBtn = row._dialog.querySelector('.threshold-add') as HTMLButtonElement;
+    addThresholdBtn.click();
+    expect(row.config.thresholds[0]).toBe(10);
+  });
+
   it('clicking remove threshold removes a row', async () => {
     renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
     const row = container.querySelector('dice-row') as any;
@@ -347,6 +375,23 @@ describe('dialog interactivity', () => {
     nameInput.dispatchEvent(new Event('input'));
     const selectBtn = row._dialog.querySelector('.preset-chip-select') as HTMLElement;
     expect(selectBtn.textContent).toBe('My Preset');
+  });
+
+  it('threshold change works without onConfigChange callback', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create custom to unlock
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    // No onConfigChange set, editing should not throw
+    row.onConfigChange = undefined;
+    const numInputs = row._dialog.querySelectorAll('.threshold-row input[type="number"]');
+    const firstNum = numInputs[0] as HTMLInputElement;
+    firstNum.value = '9';
+    firstNum.dispatchEvent(new Event('input'));
+    expect(row.config.thresholds[0]).toBe(9);
   });
 
   it('changing modifier min updates config', async () => {

@@ -95,8 +95,6 @@ export function mapThresholds(
   const targetMax = targetCount * targetSides;
   const targetRange = targetMax - targetMin;
 
-  if (refRange === 0) return preset.thresholds;
-
   return preset.thresholds.map(t => {
     return targetMin + Math.round(((t - refMin) / refRange) * targetRange);
   });
@@ -125,123 +123,55 @@ export function openDB(): Promise<IDBDatabase> {
   });
 }
 
+function idbRequest<T>(db: IDBDatabase, req: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => { db.close(); resolve(req.result); };
+    req.onerror = () => { db.close(); reject(req.error); };
+  });
+}
+
 export async function loadSettings(): Promise<SavedSettings> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('settings', 'readonly');
-    const store = tx.objectStore('settings');
-    const req = store.get('global');
-    req.onsuccess = () => {
-      db.close();
-      resolve(req.result ?? { ...DEFAULT_SETTINGS });
-    };
-    req.onerror = () => {
-      db.close();
-      reject(req.error);
-    };
-  });
+  const tx = db.transaction('settings', 'readonly');
+  const result = await idbRequest(db, tx.objectStore('settings').get('global'));
+  return result ?? { ...DEFAULT_SETTINGS };
 }
 
 export async function saveSettings(settings: SavedSettings): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('settings', 'readwrite');
-    const store = tx.objectStore('settings');
-    const req = store.put(settings, 'global');
-    req.onsuccess = () => {
-      db.close();
-      resolve();
-    };
-    req.onerror = () => {
-      db.close();
-      reject(req.error);
-    };
-  });
+  const tx = db.transaction('settings', 'readwrite');
+  await idbRequest(db, tx.objectStore('settings').put(settings, 'global'));
 }
 
 export async function loadDiceThresholds(label: string): Promise<SavedDiceThreshold | null> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('diceThresholds', 'readonly');
-    const store = tx.objectStore('diceThresholds');
-    const req = store.get(label);
-    req.onsuccess = () => {
-      db.close();
-      resolve(req.result ?? null);
-    };
-    req.onerror = () => {
-      db.close();
-      reject(req.error);
-    };
-  });
+  const tx = db.transaction('diceThresholds', 'readonly');
+  const result = await idbRequest(db, tx.objectStore('diceThresholds').get(label));
+  return result ?? null;
 }
 
 export async function saveDiceThresholds(label: string, config: SavedDiceThreshold): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('diceThresholds', 'readwrite');
-    const store = tx.objectStore('diceThresholds');
-    const req = store.put(config, label);
-    req.onsuccess = () => {
-      db.close();
-      resolve();
-    };
-    req.onerror = () => {
-      db.close();
-      reject(req.error);
-    };
-  });
+  const tx = db.transaction('diceThresholds', 'readwrite');
+  await idbRequest(db, tx.objectStore('diceThresholds').put(config, label));
 }
 
 export async function loadCustomPresets(): Promise<SavedCustomPreset[]> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('customPresets', 'readonly');
-    const store = tx.objectStore('customPresets');
-    const req = store.getAll();
-    req.onsuccess = () => {
-      db.close();
-      resolve(req.result);
-    };
-    req.onerror = () => {
-      db.close();
-      reject(req.error);
-    };
-  });
+  const tx = db.transaction('customPresets', 'readonly');
+  return idbRequest(db, tx.objectStore('customPresets').getAll());
 }
 
 export async function saveCustomPreset(preset: SavedCustomPreset): Promise<number> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('customPresets', 'readwrite');
-    const store = tx.objectStore('customPresets');
-    const req = store.put(preset);
-    req.onsuccess = () => {
-      db.close();
-      resolve(req.result as number);
-    };
-    req.onerror = () => {
-      db.close();
-      reject(req.error);
-    };
-  });
+  const tx = db.transaction('customPresets', 'readwrite');
+  return idbRequest(db, tx.objectStore('customPresets').put(preset)) as Promise<number>;
 }
 
 export async function deleteCustomPreset(id: number): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('customPresets', 'readwrite');
-    const store = tx.objectStore('customPresets');
-    const req = store.delete(id);
-    req.onsuccess = () => {
-      db.close();
-      resolve();
-    };
-    req.onerror = () => {
-      db.close();
-      reject(req.error);
-    };
-  });
+  const tx = db.transaction('customPresets', 'readwrite');
+  await idbRequest(db, tx.objectStore('customPresets').delete(id));
 }
 
 export async function migrateFromLocalStorage(): Promise<void> {
