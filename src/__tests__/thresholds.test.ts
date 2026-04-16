@@ -1,5 +1,21 @@
-import { describe, it, expect } from 'vitest';
-import { PBTA_PRESET, DND_PRESET, mapThresholds, type ThresholdPreset } from '../thresholds';
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  PBTA_PRESET,
+  DND_PRESET,
+  mapThresholds,
+  type ThresholdPreset,
+  loadSettings,
+  saveSettings,
+  loadDiceThresholds,
+  saveDiceThresholds,
+  loadCustomPresets,
+  saveCustomPreset,
+  deleteCustomPreset,
+  migrateFromLocalStorage,
+  type SavedSettings,
+  type SavedDiceThreshold,
+  type SavedCustomPreset,
+} from '../thresholds';
 
 describe('built-in presets', () => {
   it('PbtA preset has correct structure', () => {
@@ -83,5 +99,175 @@ describe('mapThresholds', () => {
     for (let i = 1; i < result.length; i++) {
       expect(result[i]).toBeGreaterThan(result[i - 1]);
     }
+  });
+});
+
+describe('IndexedDB persistence', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    await Promise.all(
+      dbs
+        .filter(db => db.name)
+        .map(
+          db =>
+            new Promise<void>((resolve, reject) => {
+              const req = indexedDB.deleteDatabase(db.name!);
+              req.onsuccess = () => resolve();
+              req.onerror = () => reject(req.error);
+              req.onblocked = () => resolve();
+            })
+        )
+    );
+  });
+
+  it('loadSettings returns defaults when no settings saved', async () => {
+    const settings = await loadSettings();
+    expect(settings.diceList).toEqual(['2d6', '2d12', '1d20']);
+    expect(settings.minMod).toBe(-2);
+    expect(settings.maxMod).toBe(5);
+    expect(settings.showAdvantage).toBe(true);
+    expect(settings.showDisadvantage).toBe(true);
+  });
+
+  it('saveSettings and loadSettings round-trip', async () => {
+    const toSave: SavedSettings = {
+      diceList: ['1d6', '1d8'],
+      minMod: -3,
+      maxMod: 3,
+      showAdvantage: false,
+      showDisadvantage: true,
+    };
+    await saveSettings(toSave);
+    const loaded = await loadSettings();
+    expect(loaded).toEqual(toSave);
+  });
+
+  it('saveDiceThresholds and loadDiceThresholds round-trip', async () => {
+    const config: SavedDiceThreshold = {
+      presetName: 'PbtA',
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Hit', color: '#4ade80' },
+      ],
+      thresholds: [7, 10],
+    };
+    await saveDiceThresholds('2d6', config);
+    const loaded = await loadDiceThresholds('2d6');
+    expect(loaded).toEqual(config);
+  });
+
+  it('loadDiceThresholds returns null for unknown label', async () => {
+    const result = await loadDiceThresholds('3d8');
+    expect(result).toBeNull();
+  });
+
+  it('saveCustomPreset auto-increments id', async () => {
+    const preset: SavedCustomPreset = {
+      name: 'My Preset',
+      referenceDie: '2d6',
+      thresholds: [7, 10],
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Hit', color: '#4ade80' },
+      ],
+    };
+    const id1 = await saveCustomPreset(preset);
+    const id2 = await saveCustomPreset({ ...preset, name: 'Another Preset' });
+    expect(typeof id1).toBe('number');
+    expect(typeof id2).toBe('number');
+    expect(id2).toBeGreaterThan(id1);
+  });
+
+  it('loadCustomPresets returns all saved presets', async () => {
+    const preset: SavedCustomPreset = {
+      name: 'Preset A',
+      referenceDie: '1d20',
+      thresholds: [10],
+      categories: [
+        { label: 'Fail', color: '#f87171' },
+        { label: 'Pass', color: '#4ade80' },
+      ],
+    };
+    await saveCustomPreset(preset);
+    await saveCustomPreset({ ...preset, name: 'Preset B' });
+    const all = await loadCustomPresets();
+    expect(all).toHaveLength(2);
+    expect(all[0].name).toBe('Preset A');
+    expect(all[1].name).toBe('Preset B');
+  });
+
+  it('deleteCustomPreset removes the preset', async () => {
+    const preset: SavedCustomPreset = {
+      name: 'To Delete',
+      referenceDie: '2d6',
+      thresholds: [7],
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Hit', color: '#4ade80' },
+      ],
+    };
+    const id = await saveCustomPreset(preset);
+    await deleteCustomPreset(id);
+    const all = await loadCustomPresets();
+    expect(all).toHaveLength(0);
+  });
+});
+
+describe('migrateFromLocalStorage', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    await Promise.all(
+      dbs
+        .filter(db => db.name)
+        .map(
+          db =>
+            new Promise<void>((resolve, reject) => {
+              const req = indexedDB.deleteDatabase(db.name!);
+              req.onsuccess = () => resolve();
+              req.onerror = () => reject(req.error);
+              req.onblocked = () => resolve();
+            })
+        )
+    );
+    localStorage.clear();
+  });
+
+  it('migrates settings from localStorage to IndexedDB', async () => {
+    const legacy: SavedSettings = {
+      diceList: ['1d4', '1d8'],
+      minMod: 0,
+      maxMod: 4,
+      showAdvantage: false,
+      showDisadvantage: false,
+    };
+    localStorage.setItem('dice-visualizer-settings', JSON.stringify(legacy));
+    await migrateFromLocalStorage();
+    const loaded = await loadSettings();
+    expect(loaded).toEqual(legacy);
+  });
+
+  it('removes the localStorage key after migration', async () => {
+    const legacy: SavedSettings = {
+      diceList: ['1d10'],
+      minMod: -1,
+      maxMod: 2,
+      showAdvantage: true,
+      showDisadvantage: false,
+    };
+    localStorage.setItem('dice-visualizer-settings', JSON.stringify(legacy));
+    await migrateFromLocalStorage();
+    expect(localStorage.getItem('dice-visualizer-settings')).toBeNull();
+  });
+
+  it('is a no-op when no localStorage key exists', async () => {
+    await migrateFromLocalStorage();
+    const settings = await loadSettings();
+    expect(settings).toEqual({
+      diceList: ['2d6', '2d12', '1d20'],
+      minMod: -2,
+      maxMod: 5,
+      showAdvantage: true,
+      showDisadvantage: true,
+    });
   });
 });
