@@ -480,6 +480,56 @@ dialog::backdrop {
   font-weight: bold;
 }
 
+/* ── Custom Preset Chip (with delete) ── */
+
+.preset-chip-custom {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #333;
+  overflow: hidden;
+}
+
+.preset-chip-custom.active {
+  background: #4ade80;
+  border-color: #4ade80;
+}
+
+.preset-chip-select {
+  background: none;
+  border: none;
+  padding: 5px 4px 5px 12px;
+  font-size: 12px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.preset-chip-custom.active .preset-chip-select {
+  color: #000;
+  font-weight: 600;
+}
+
+.preset-chip-delete {
+  background: none;
+  border: none;
+  border-left: 1px solid #555;
+  padding: 5px 6px;
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.preset-chip-custom.active .preset-chip-delete {
+  border-left-color: rgba(0, 0, 0, 0.2);
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.preset-chip-delete:hover {
+  color: #f87171;
+}
+
 /* ── Custom Preset Name ── */
 
 .preset-name-input input {

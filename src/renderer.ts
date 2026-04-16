@@ -3,6 +3,7 @@ import {
   BUILTIN_PRESETS,
   mapThresholds,
   saveCustomPreset,
+  deleteCustomPreset,
   loadCustomPresets,
   type DiceConfig,
   type ThresholdCategory,
@@ -272,16 +273,39 @@ class DiceRowElement extends HTMLElement {
     }
 
     for (const custom of this._customPresets) {
-      const chip = document.createElement('button');
-      chip.className = 'preset-chip';
+      const chipWrapper = document.createElement('div');
+      chipWrapper.className = 'preset-chip-custom';
       if (this.presetName === custom.name) {
-        chip.classList.add('active');
+        chipWrapper.classList.add('active');
       }
-      chip.textContent = custom.name;
-      chip.addEventListener('click', () => {
+
+      const selectBtn = document.createElement('button');
+      selectBtn.className = 'preset-chip-select';
+      selectBtn.textContent = custom.name;
+      selectBtn.setAttribute('aria-label', 'Select preset ' + custom.name);
+      selectBtn.addEventListener('click', () => {
         this._switchToCustomPreset(custom);
       });
-      chipsContainer.appendChild(chip);
+      chipWrapper.appendChild(selectBtn);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'preset-chip-delete';
+      deleteBtn.textContent = '\u00d7';
+      deleteBtn.setAttribute('aria-label', 'Delete preset ' + custom.name);
+      deleteBtn.addEventListener('click', () => {
+        if (custom.id != null) {
+          deleteCustomPreset(custom.id).catch(() => {});
+        }
+        this._customPresets = this._customPresets.filter(p => p !== custom);
+        if (this.presetName === custom.name) {
+          this._switchToBuiltinPreset(BUILTIN_PRESETS[0]);
+        } else {
+          this._buildDialogContent();
+        }
+      });
+      chipWrapper.appendChild(deleteBtn);
+
+      chipsContainer.appendChild(chipWrapper);
     }
 
     const addPresetBtn = document.createElement('button');
