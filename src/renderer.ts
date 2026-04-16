@@ -407,12 +407,21 @@ class DiceRowElement extends HTMLElement {
       });
       row.appendChild(labelInput);
 
-      // Floor row (index 0) has no number input and no remove button
-      if (i > 0) {
+      if (i === 0) {
+        // Floor row: show computed upper bound label, no remove button
+        const floorLabel = document.createElement('span');
+        floorLabel.className = 'threshold-floor-label';
+        floorLabel.textContent = '\u2264' + (thresholds.length > 0 ? thresholds[0] - 1 : '?');
+        row.appendChild(floorLabel);
+      } else {
         const numInput = document.createElement('input');
         numInput.type = 'number';
         numInput.value = String(thresholds[i - 1]);
         numInput.disabled = isBuiltin;
+        // Min is one more than the previous threshold (or no min for the first)
+        if (i > 1) {
+          numInput.min = String(thresholds[i - 2] + 1);
+        }
         numInput.addEventListener('input', () => {
           const val = parseInt(numInput.value, 10);
           if (!isNaN(val)) {
