@@ -216,6 +216,19 @@ describe('dialog', () => {
 });
 
 describe('dialog interactivity', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    for (const db of dbs) {
+      if (db.name) {
+        await new Promise<void>((resolve) => {
+          const req = indexedDB.deleteDatabase(db.name!);
+          req.onsuccess = () => resolve();
+          req.onblocked = () => resolve();
+        });
+      }
+    }
+  });
+
   it('switching to D&D preset updates categories to 7', async () => {
     renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
     const row = container.querySelector('dice-row') as any;
@@ -286,6 +299,153 @@ describe('dialog interactivity', () => {
     const floorLabel = container.querySelector('.threshold-floor-label');
     expect(floorLabel).toBeTruthy();
     expect(floorLabel!.textContent).toBe('\u22646'); // thresholds[0] is 7, so 7-1=6
+  });
+
+  it('selecting a custom preset switches thresholds', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create a custom preset first
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    // Switch to PbtA, then back to the custom
+    const chips = row._dialog.querySelectorAll('.preset-chip');
+    const pbtaChip = Array.from(chips).find((c: any) => c.textContent === 'PbtA') as HTMLButtonElement;
+    pbtaChip.click();
+    const selectBtn = row._dialog.querySelector('.preset-chip-select') as HTMLButtonElement;
+    selectBtn.click();
+    expect(row._dialog.querySelectorAll('.threshold-row').length).toBe(3);
+  });
+
+  it('deleting a custom preset removes its chip', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create a custom preset
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(row._dialog.querySelectorAll('.preset-chip-custom').length).toBe(1);
+    // Delete it
+    const deleteBtn = row._dialog.querySelector('.preset-chip-delete') as HTMLButtonElement;
+    deleteBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(row._dialog.querySelectorAll('.preset-chip-custom').length).toBe(0);
+  });
+
+  it('editing preset name updates chip label live', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create a custom preset
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const nameInput = row._dialog.querySelector('.preset-name-input input') as HTMLInputElement;
+    nameInput.value = 'My Preset';
+    nameInput.dispatchEvent(new Event('input'));
+    const selectBtn = row._dialog.querySelector('.preset-chip-select') as HTMLElement;
+    expect(selectBtn.textContent).toBe('My Preset');
+  });
+
+  it('changing modifier min updates config', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: -2, maxMod: 5 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const minInput = row._dialog.querySelector('[aria-label="Min modifier"]') as HTMLInputElement;
+    minInput.value = '0';
+    minInput.dispatchEvent(new Event('change'));
+    expect(row.config.minMod).toBe(0);
+  });
+
+  it('changing modifier max updates config', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: -2, maxMod: 5 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const maxInput = row._dialog.querySelector('[aria-label="Max modifier"]') as HTMLInputElement;
+    maxInput.value = '3';
+    maxInput.dispatchEvent(new Event('change'));
+    expect(row.config.maxMod).toBe(3);
+  });
+
+  it('clamps max up when min exceeds max', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: -2, maxMod: 5 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const minInput = row._dialog.querySelector('[aria-label="Min modifier"]') as HTMLInputElement;
+    minInput.value = '10';
+    minInput.dispatchEvent(new Event('change'));
+    expect(row.config.minMod).toBe(10);
+    expect(row.config.maxMod).toBe(10);
+  });
+
+  it('clamps min down when max goes below min', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: -2, maxMod: 5 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const maxInput = row._dialog.querySelector('[aria-label="Max modifier"]') as HTMLInputElement;
+    maxInput.value = '-5';
+    maxInput.dispatchEvent(new Event('change'));
+    expect(row.config.maxMod).toBe(-5);
+    expect(row.config.minMod).toBe(-5);
+  });
+
+  it('ignores NaN modifier values', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: -2, maxMod: 5 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const minInput = row._dialog.querySelector('[aria-label="Min modifier"]') as HTMLInputElement;
+    minInput.value = '';
+    minInput.dispatchEvent(new Event('change'));
+    expect(row.config.minMod).toBe(-2);
+    const maxInput = row._dialog.querySelector('[aria-label="Max modifier"]') as HTMLInputElement;
+    maxInput.value = '';
+    maxInput.dispatchEvent(new Event('change'));
+    expect(row.config.maxMod).toBe(5);
+  });
+
+  it('editing a threshold number updates config', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create custom preset to unlock inputs
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const numInputs = row._dialog.querySelectorAll('.threshold-row input[type="number"]');
+    const firstNum = numInputs[0] as HTMLInputElement;
+    firstNum.value = '8';
+    firstNum.dispatchEvent(new Event('input'));
+    expect(row.config.thresholds[0]).toBe(8);
+  });
+
+  it('editing a threshold color updates config', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const colorInputs = row._dialog.querySelectorAll('.threshold-row input[type="color"]');
+    const firstColor = colorInputs[0] as HTMLInputElement;
+    firstColor.value = '#ff0000';
+    firstColor.dispatchEvent(new Event('input'));
+    expect(row.config.categories[0].color).toBe('#ff0000');
+  });
+
+  it('editing a threshold label updates config', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const textInputs = row._dialog.querySelectorAll('.threshold-row input[type="text"]');
+    const firstLabel = textInputs[0] as HTMLInputElement;
+    firstLabel.value = 'Failure';
+    firstLabel.dispatchEvent(new Event('input'));
+    expect(row.config.categories[0].label).toBe('Failure');
   });
 });
 

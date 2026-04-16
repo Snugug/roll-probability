@@ -369,6 +369,21 @@ describe('main — persistence', () => {
     expect(saved.diceList).toEqual(['2d6', '2d8']);
   });
 
+  it('re-renders page when dialog closes', async () => {
+    const init = await loadInit();
+    await init();
+
+    const row = document.querySelector('dice-row') as any;
+    expect(row.onDialogClose).toBeTruthy();
+    // Modify config directly, then trigger dialog close to re-render
+    row.config.thresholds = [8, 11];
+    row.onDialogClose();
+    await new Promise(r => setTimeout(r, 50));
+    // Page should have re-rendered with updated thresholds
+    const rangeItems = document.querySelector('dice-row')!.querySelectorAll('.dice-range-item');
+    expect(rangeItems[0].textContent).toContain('<8');
+  });
+
   it('saves dice thresholds to IndexedDB when config changes via dialog', async () => {
     const init = await loadInit();
     await init();
