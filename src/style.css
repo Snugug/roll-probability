@@ -418,7 +418,6 @@ dialog::backdrop {
 /* ── Dialog Editor Wrapper ── */
 
 .dialog-editor-wrapper {
-  max-width: 30ch;
   margin: 0 auto;
   padding: 16px;
   display: flex;
@@ -497,7 +496,8 @@ dialog::backdrop {
 /* ── Threshold Editor ── */
 
 .threshold-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 24px 1fr 50px 24px;
   align-items: center;
   gap: 8px;
   padding: 6px 0;
@@ -520,7 +520,6 @@ dialog::backdrop {
   padding: 4px 8px;
   color: #e0e0e0;
   font-size: 13px;
-  flex: 1;
 }
 
 .threshold-row input[type="number"] {
@@ -530,7 +529,6 @@ dialog::backdrop {
   padding: 4px 8px;
   color: #e0e0e0;
   font-size: 13px;
-  width: 50px;
   text-align: center;
 }
 
