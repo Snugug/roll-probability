@@ -22,6 +22,8 @@ function buildConfig(label: string): DiceConfig | null {
     label,
     thresholds,
     categories: PBTA_PRESET.categories,
+    minMod: -2,
+    maxMod: 5,
   };
 }
 
@@ -38,6 +40,8 @@ async function buildConfigWithSaved(label: string): Promise<DiceConfig | null> {
       thresholds: saved.thresholds,
       categories: saved.categories,
       presetName: saved.presetName,
+      minMod: saved.minMod ?? -2,
+      maxMod: saved.maxMod ?? 5,
     };
   }
 
@@ -54,30 +58,22 @@ export async function init(): Promise<void> {
     if (config) diceConfigs.push(config);
   }
 
-  let minMod = settings.minMod;
-  let maxMod = settings.maxMod;
   let showAdvantage = settings.showAdvantage;
   let showDisadvantage = settings.showDisadvantage;
 
   const rowsContainer = document.getElementById('dice-rows')!;
-  const minInput = document.getElementById('min-mod') as HTMLInputElement;
-  const maxInput = document.getElementById('max-mod') as HTMLInputElement;
   const advToggle = document.getElementById('adv-toggle') as HTMLButtonElement;
   const disToggle = document.getElementById('dis-toggle') as HTMLButtonElement;
   const diceInput = document.getElementById('dice-input') as HTMLInputElement;
   const diceAddBtn = document.getElementById('dice-add') as HTMLButtonElement;
   const pillsContainer = document.getElementById('dice-pills')!;
 
-  minInput.value = String(minMod);
-  maxInput.value = String(maxMod);
   advToggle.classList.toggle('active', showAdvantage);
   disToggle.classList.toggle('active', showDisadvantage);
 
   function save(): void {
     saveSettings({
       diceList: diceConfigs.map(c => c.label),
-      minMod,
-      maxMod,
       showAdvantage,
       showDisadvantage,
     });
@@ -114,6 +110,8 @@ export async function init(): Promise<void> {
       presetName,
       categories: config.categories,
       thresholds: config.thresholds,
+      minMod: config.minMod,
+      maxMod: config.maxMod,
     }).catch(() => {});
   }
 
@@ -122,7 +120,7 @@ export async function init(): Promise<void> {
   }
 
   function update(): void {
-    renderPage(rowsContainer, diceConfigs, minMod, maxMod, showAdvantage, showDisadvantage, handleConfigChange, handleDialogClose);
+    renderPage(rowsContainer, diceConfigs, showAdvantage, showDisadvantage, handleConfigChange, handleDialogClose);
     renderPills();
     save();
   }
@@ -145,30 +143,6 @@ export async function init(): Promise<void> {
   diceAddBtn.addEventListener('click', addDice);
   diceInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') addDice();
-  });
-
-  minInput.addEventListener('change', () => {
-    const val = parseInt(minInput.value, 10);
-    if (!isNaN(val)) {
-      minMod = val;
-      if (minMod > maxMod) {
-        maxMod = minMod;
-        maxInput.value = String(maxMod);
-      }
-      update();
-    }
-  });
-
-  maxInput.addEventListener('change', () => {
-    const val = parseInt(maxInput.value, 10);
-    if (!isNaN(val)) {
-      maxMod = val;
-      if (maxMod < minMod) {
-        minMod = maxMod;
-        minInput.value = String(minMod);
-      }
-      update();
-    }
   });
 
   advToggle.addEventListener('click', () => {

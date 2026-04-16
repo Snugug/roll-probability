@@ -2,8 +2,6 @@ import { parseDiceNotation } from './engine';
 
 export interface SavedSettings {
   diceList: string[];
-  minMod: number;
-  maxMod: number;
   showAdvantage: boolean;
   showDisadvantage: boolean;
 }
@@ -12,6 +10,8 @@ export interface SavedDiceThreshold {
   presetName: string;
   categories: ThresholdCategory[];
   thresholds: number[];
+  minMod: number;
+  maxMod: number;
 }
 
 export interface SavedCustomPreset {
@@ -41,6 +41,8 @@ export interface DiceConfig {
   thresholds: number[];
   categories: ThresholdCategory[];
   presetName?: string;
+  minMod: number;
+  maxMod: number;
 }
 
 export const PBTA_PRESET: ThresholdPreset = {
@@ -73,8 +75,6 @@ export const BUILTIN_PRESETS: ThresholdPreset[] = [PBTA_PRESET, DND_PRESET];
 
 const DEFAULT_SETTINGS: SavedSettings = {
   diceList: ['2d6', '2d12', '1d20'],
-  minMod: -2,
-  maxMod: 5,
   showAdvantage: true,
   showDisadvantage: true,
 };

@@ -415,6 +415,29 @@ dialog::backdrop {
   margin-top: 2px;
 }
 
+/* ── Dialog Modifier Inputs ── */
+
+.dialog-mod-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 12px;
+  font-size: 12px;
+  color: #aaa;
+  max-width: 30ch;
+}
+
+.dialog-mod-inputs input[type="number"] {
+  width: 5ch;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 2px 6px;
+  font-size: 12px;
+  text-align: center;
+}
+
 /* ── Preset Chips ── */
 
 .preset-chips {
@@ -453,6 +476,7 @@ dialog::backdrop {
 
 .preset-name-input {
   padding: 8px 16px 12px;
+  max-width: 30ch;
 }
 
 .preset-name-input input {
@@ -470,6 +494,7 @@ dialog::backdrop {
 
 .threshold-editor {
   padding: 12px 16px;
+  max-width: 30ch;
 }
 
 .threshold-row {
@@ -477,7 +502,6 @@ dialog::backdrop {
   align-items: center;
   gap: 8px;
   padding: 6px 0;
-  border-bottom: 1px solid #222;
 }
 
 .threshold-row input[type="color"] {
@@ -526,21 +550,35 @@ dialog::backdrop {
   padding: 0;
 }
 
-.threshold-remove:hover {
+.threshold-remove:hover:not(:disabled) {
   color: #f87171;
 }
 
+.threshold-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .threshold-add {
+  display: block;
+  margin-left: auto;
+  margin-top: 8px;
+  margin-right: 24px;
   background: none;
   border: 1px solid #333;
   border-radius: 4px;
   padding: 4px 10px;
-  color: #4ade80;
+  color: #ccc;
   font-size: 12px;
   cursor: pointer;
-  margin-top: 8px;
 }
 
-.threshold-add:hover {
-  border-color: #4ade80;
+.threshold-add:hover:not(:disabled) {
+  border-color: #888;
+  color: #e0e0e0;
+}
+
+.threshold-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

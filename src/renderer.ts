@@ -123,8 +123,6 @@ function createGearSvg(): SVGSVGElement {
 
 class DiceRowElement extends HTMLElement {
   config!: DiceConfig;
-  minMod = -2;
-  maxMod = 5;
   showAdvantage = true;
   showDisadvantage = true;
   presetName = 'PbtA';
@@ -179,7 +177,7 @@ class DiceRowElement extends HTMLElement {
     const barsContainer = document.createElement('div');
     barsContainer.className = 'bars';
 
-    for (let mod = this.minMod; mod <= this.maxMod; mod++) {
+    for (let mod = this.config.minMod; mod <= this.config.maxMod; mod++) {
       const col = document.createElement('bar-column') as BarColumn;
       col.config = this.config;
       col.modifier = mod;
@@ -303,10 +301,6 @@ class DiceRowElement extends HTMLElement {
       nameInputContainer.style.display = 'none';
     }
 
-    const nameLabel = document.createElement('label');
-    nameLabel.textContent = 'Preset Name: ';
-    nameInputContainer.appendChild(nameLabel);
-
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.value = this.presetName;
@@ -332,6 +326,52 @@ class DiceRowElement extends HTMLElement {
     nameInputContainer.appendChild(nameInput);
 
     this._dialog.appendChild(nameInputContainer);
+
+    // Modifier range inputs
+    const modContainer = document.createElement('div');
+    modContainer.className = 'dialog-mod-inputs';
+
+    const modLabel = document.createElement('span');
+    modLabel.textContent = 'Modifiers:';
+    modContainer.appendChild(modLabel);
+
+    const minModInput = document.createElement('input');
+    minModInput.type = 'number';
+    minModInput.value = String(this.config.minMod);
+    minModInput.setAttribute('aria-label', 'Min modifier');
+    minModInput.addEventListener('change', () => {
+      const val = parseInt(minModInput.value, 10);
+      if (isNaN(val)) return;
+      this.config.minMod = val;
+      if (this.config.minMod > this.config.maxMod) {
+        this.config.maxMod = this.config.minMod;
+        maxModInput.value = String(this.config.maxMod);
+      }
+      this._onThresholdChange();
+    });
+    modContainer.appendChild(minModInput);
+
+    const dash = document.createElement('span');
+    dash.textContent = '\u2013';
+    modContainer.appendChild(dash);
+
+    const maxModInput = document.createElement('input');
+    maxModInput.type = 'number';
+    maxModInput.value = String(this.config.maxMod);
+    maxModInput.setAttribute('aria-label', 'Max modifier');
+    maxModInput.addEventListener('change', () => {
+      const val = parseInt(maxModInput.value, 10);
+      if (isNaN(val)) return;
+      this.config.maxMod = val;
+      if (this.config.maxMod < this.config.minMod) {
+        this.config.minMod = this.config.maxMod;
+        minModInput.value = String(this.config.minMod);
+      }
+      this._onThresholdChange();
+    });
+    modContainer.appendChild(maxModInput);
+
+    this._dialog.appendChild(modContainer);
 
     // Threshold editor
     const editor = document.createElement('div');
@@ -399,7 +439,7 @@ class DiceRowElement extends HTMLElement {
     // Add threshold button
     const addBtn = document.createElement('button');
     addBtn.className = 'threshold-add';
-    addBtn.textContent = 'Add Threshold';
+    addBtn.textContent = '+ Add Threshold';
     addBtn.disabled = isBuiltin;
     addBtn.addEventListener('click', () => {
       const lastThreshold = this.config.thresholds.length > 0
@@ -421,7 +461,7 @@ class DiceRowElement extends HTMLElement {
     const barsWrapper = document.createElement('div');
     barsWrapper.className = 'bars';
 
-    for (let mod = this.minMod; mod <= this.maxMod; mod++) {
+    for (let mod = this.config.minMod; mod <= this.config.maxMod; mod++) {
       const col = document.createElement('bar-column') as BarColumn;
       col.config = this.config;
       col.modifier = mod;
@@ -496,8 +536,6 @@ if (!customElements.get('dice-row')) customElements.define('dice-row', DiceRowEl
 export function renderPage(
   container: HTMLElement,
   configs: DiceConfig[],
-  minMod: number,
-  maxMod: number,
   showAdvantage: boolean,
   showDisadvantage: boolean,
   onConfigChange?: (index: number, config: DiceConfig, presetName: string) => void,
@@ -511,8 +549,6 @@ export function renderPage(
     const config = configs[i];
     const row = document.createElement('dice-row') as DiceRowElement;
     row.config = config;
-    row.minMod = minMod;
-    row.maxMod = maxMod;
     row.showAdvantage = showAdvantage;
     row.showDisadvantage = showDisadvantage;
     if (onConfigChange) {

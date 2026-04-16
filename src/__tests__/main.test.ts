@@ -60,26 +60,6 @@ function setupDOM(): void {
   pills.className = 'dice-pills';
   controls.appendChild(pills);
 
-  const modInputs = document.createElement('div');
-  modInputs.className = 'mod-inputs';
-  const minLabel = document.createElement('label');
-  minLabel.textContent = 'Min: ';
-  const minInput = document.createElement('input');
-  minInput.type = 'number';
-  minInput.id = 'min-mod';
-  minInput.value = '-2';
-  minLabel.appendChild(minInput);
-  const maxLabel = document.createElement('label');
-  maxLabel.textContent = 'Max: ';
-  const maxInput = document.createElement('input');
-  maxInput.type = 'number';
-  maxInput.id = 'max-mod';
-  maxInput.value = '5';
-  maxLabel.appendChild(maxInput);
-  modInputs.appendChild(minLabel);
-  modInputs.appendChild(maxLabel);
-  controls.appendChild(modInputs);
-
   header.appendChild(controls);
   app.appendChild(header);
 
@@ -131,16 +111,12 @@ describe('main — loadSettings', () => {
   it('loads saved settings from IndexedDB', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: 0,
-      maxMod: 3,
       showAdvantage: false,
       showDisadvantage: false,
     });
     const init = await loadInit();
     await init();
     expect(document.querySelectorAll('dice-row').length).toBe(1);
-    expect((document.getElementById('min-mod') as HTMLInputElement).value).toBe('0');
-    expect((document.getElementById('max-mod') as HTMLInputElement).value).toBe('3');
     expect(document.getElementById('adv-toggle')!.classList.contains('active')).toBe(false);
     expect(document.getElementById('dis-toggle')!.classList.contains('active')).toBe(false);
   });
@@ -148,8 +124,6 @@ describe('main — loadSettings', () => {
   it('skips invalid dice notation in saved diceList', async () => {
     await saveSettings({
       diceList: ['2d6', 'bad', '2d8'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -174,8 +148,6 @@ describe('main — loadSettings', () => {
   it('uses saved thresholds from IndexedDB when available', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: 0,
-      maxMod: 0,
       showAdvantage: false,
       showDisadvantage: false,
     });
@@ -187,6 +159,8 @@ describe('main — loadSettings', () => {
         { label: 'Partial', color: '#ffff00' },
         { label: 'Success', color: '#00ff00' },
       ],
+      minMod: -2,
+      maxMod: 5,
     });
     const init = await loadInit();
     await init();
@@ -209,8 +183,6 @@ describe('main — addDice', () => {
   it('adds a dice type via the add button', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -230,8 +202,6 @@ describe('main — addDice', () => {
   it('adds a dice type via Enter key', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -248,8 +218,6 @@ describe('main — addDice', () => {
   it('does not add on non-Enter keydown', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -266,8 +234,6 @@ describe('main — addDice', () => {
   it('ignores empty input', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -283,8 +249,6 @@ describe('main — addDice', () => {
   it('ignores invalid notation', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -300,8 +264,6 @@ describe('main — addDice', () => {
   it('ignores duplicates', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -367,82 +329,6 @@ describe('main — toggles', () => {
   });
 });
 
-describe('main — modifier inputs', () => {
-  beforeEach(async () => {
-    vi.resetModules();
-    await clearIndexedDB();
-    localStorage.clear();
-    document.body.replaceChildren();
-    setupDOM();
-  });
-
-  it('updates min modifier on change', async () => {
-    const init = await loadInit();
-    await init();
-
-    const minInput = document.getElementById('min-mod') as HTMLInputElement;
-    minInput.value = '0';
-    minInput.dispatchEvent(new Event('change'));
-
-    // Let the fire-and-forget save complete
-    await new Promise(r => setTimeout(r, 0));
-    const saved = await loadSettings();
-    expect(saved.minMod).toBe(0);
-  });
-
-  it('clamps max up when min exceeds max', async () => {
-    const init = await loadInit();
-    await init();
-
-    const minInput = document.getElementById('min-mod') as HTMLInputElement;
-    const maxInput = document.getElementById('max-mod') as HTMLInputElement;
-    minInput.value = '10';
-    minInput.dispatchEvent(new Event('change'));
-
-    expect(maxInput.value).toBe('10');
-  });
-
-  it('clamps min down when max goes below min', async () => {
-    const init = await loadInit();
-    await init();
-
-    const minInput = document.getElementById('min-mod') as HTMLInputElement;
-    const maxInput = document.getElementById('max-mod') as HTMLInputElement;
-    maxInput.value = '-5';
-    maxInput.dispatchEvent(new Event('change'));
-
-    expect(minInput.value).toBe('-5');
-  });
-
-  it('ignores NaN min value', async () => {
-    const init = await loadInit();
-    await init();
-
-    const minInput = document.getElementById('min-mod') as HTMLInputElement;
-    minInput.value = '';
-    minInput.dispatchEvent(new Event('change'));
-
-    // Let the fire-and-forget save complete
-    await new Promise(r => setTimeout(r, 0));
-    const saved = await loadSettings();
-    expect(saved.minMod).toBe(-2);
-  });
-
-  it('ignores NaN max value', async () => {
-    const init = await loadInit();
-    await init();
-
-    const maxInput = document.getElementById('max-mod') as HTMLInputElement;
-    maxInput.value = '';
-    maxInput.dispatchEvent(new Event('change'));
-
-    // Let the fire-and-forget save complete
-    await new Promise(r => setTimeout(r, 0));
-    const saved = await loadSettings();
-    expect(saved.maxMod).toBe(5);
-  });
-});
-
 describe('main — persistence', () => {
   beforeEach(async () => {
     vi.resetModules();
@@ -460,8 +346,6 @@ describe('main — persistence', () => {
     await new Promise(r => setTimeout(r, 0));
     const saved = await loadSettings();
     expect(saved.diceList).toEqual(['2d6', '2d12', '1d20']);
-    expect(saved.minMod).toBe(-2);
-    expect(saved.maxMod).toBe(5);
     expect(saved.showAdvantage).toBe(true);
     expect(saved.showDisadvantage).toBe(true);
   });
@@ -469,8 +353,6 @@ describe('main — persistence', () => {
   it('persists after adding dice', async () => {
     await saveSettings({
       diceList: ['2d6'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -499,8 +381,6 @@ describe('main — migration', () => {
   it('migrates settings from localStorage to IndexedDB', async () => {
     const legacy: SavedSettings = {
       diceList: ['1d4', '1d8'],
-      minMod: 0,
-      maxMod: 4,
       showAdvantage: false,
       showDisadvantage: false,
     };
@@ -512,8 +392,6 @@ describe('main — migration', () => {
     // Migration should have moved data to IndexedDB
     const saved = await loadSettings();
     expect(saved.diceList).toEqual(['1d4', '1d8']);
-    expect(saved.minMod).toBe(0);
-    expect(saved.maxMod).toBe(4);
     expect(saved.showAdvantage).toBe(false);
     expect(saved.showDisadvantage).toBe(false);
   });
@@ -521,8 +399,6 @@ describe('main — migration', () => {
   it('removes localStorage key after migration', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       diceList: ['2d6'],
-      minMod: -1,
-      maxMod: 2,
       showAdvantage: true,
       showDisadvantage: false,
     }));

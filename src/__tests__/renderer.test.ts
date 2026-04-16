@@ -10,6 +10,8 @@ const config2d6: DiceConfig = {
     { label: 'Weak Hit', color: '#facc15' },
     { label: 'Strong Hit', color: '#4ade80' },
   ],
+  minMod: -2,
+  maxMod: 5,
 };
 
 const config1d20: DiceConfig = {
@@ -24,6 +26,8 @@ const config1d20: DiceConfig = {
     { label: 'Very Hard', color: '#ef4444' },
     { label: 'Nearly Impossible', color: '#a855f7' },
   ],
+  minMod: -2,
+  maxMod: 5,
 };
 
 let container: HTMLElement;
@@ -39,25 +43,25 @@ afterEach(() => {
 
 describe('renderPage', () => {
   it('creates a dice-row for each config', () => {
-    renderPage(container, [config2d6, config1d20], 0, 0, false, false);
+    renderPage(container, [config2d6, config1d20], false, false);
     expect(container.querySelectorAll('dice-row').length).toBe(2);
   });
 
   it('clears previous content before rendering', () => {
-    renderPage(container, [config2d6, config1d20], 0, 0, false, false);
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6, config1d20], false, false);
+    renderPage(container, [config2d6], false, false);
     expect(container.querySelectorAll('dice-row').length).toBe(1);
   });
 
   it('renders nothing for empty configs', () => {
-    renderPage(container, [], 0, 0, false, false);
+    renderPage(container, [], false, false);
     expect(container.children.length).toBe(0);
   });
 });
 
 describe('dice-row', () => {
   it('renders header with label and N colored range items', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const row = container.querySelector('dice-row')!;
     expect(row.querySelector('.dice-label')!.textContent).toBe('2d6');
     const items = row.querySelectorAll('.dice-range-item');
@@ -68,7 +72,7 @@ describe('dice-row', () => {
   });
 
   it('renders inline swatch colors', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const swatches = container.querySelectorAll('.range-swatch');
     expect((swatches[0] as HTMLElement).style.backgroundColor).toBeTruthy();
     expect((swatches[1] as HTMLElement).style.backgroundColor).toBeTruthy();
@@ -76,7 +80,7 @@ describe('dice-row', () => {
   });
 
   it('renders 7 range items for D&D config', () => {
-    renderPage(container, [config1d20], 0, 0, false, false);
+    renderPage(container, [config1d20], false, false);
     const items = container.querySelectorAll('.dice-range-item');
     expect(items.length).toBe(7);
     expect(items[0].textContent).toBe('Trivial <5');
@@ -84,13 +88,13 @@ describe('dice-row', () => {
   });
 
   it('creates bar-columns for each modifier in range', () => {
-    renderPage(container, [config2d6], -1, 1, false, false);
+    renderPage(container, [{ ...config2d6, minMod: -1, maxMod: 1 }], false, false);
     const bars = container.querySelector('.bars')!;
     expect(bars.querySelectorAll('bar-column').length).toBe(3);
   });
 
   it('renders a gear icon button', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const gearBtn = container.querySelector('.gear-btn');
     expect(gearBtn).toBeTruthy();
     expect(gearBtn!.getAttribute('commandfor')).toBe('dialog-2d6');
@@ -98,7 +102,7 @@ describe('dice-row', () => {
   });
 
   it('renders a dialog element', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog#dialog-2d6');
     expect(dialog).toBeTruthy();
   });
@@ -106,44 +110,44 @@ describe('dice-row', () => {
 
 describe('bar-column', () => {
   it('shows all three sub-bars when both toggles on', () => {
-    renderPage(container, [config2d6], 0, 0, true, true);
+    renderPage(container, [{ ...config2d6, minMod: 0, maxMod: 0 }], true, true);
     const bars = container.querySelector('.bars')!;
     expect(bars.querySelectorAll('stacked-bar').length).toBe(3);
   });
 
   it('shows only normal bar when both toggles off', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [{ ...config2d6, minMod: 0, maxMod: 0 }], false, false);
     const bars = container.querySelector('.bars')!;
     expect(bars.querySelectorAll('stacked-bar').length).toBe(1);
   });
 
   it('renders positive modifier label', () => {
-    renderPage(container, [config2d6], 2, 2, false, false);
+    renderPage(container, [{ ...config2d6, minMod: 2, maxMod: 2 }], false, false);
     expect(container.querySelector('.mod-label')!.textContent).toBe('+2');
   });
 
   it('renders negative modifier label', () => {
-    renderPage(container, [config2d6], -1, -1, false, false);
+    renderPage(container, [{ ...config2d6, minMod: -1, maxMod: -1 }], false, false);
     expect(container.querySelector('.mod-label')!.textContent).toBe('-1');
   });
 });
 
 describe('dialog', () => {
   it('contains .dialog-header h3 with "{label} Thresholds"', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     const h3 = dialog.querySelector('.dialog-header h3')!;
     expect(h3.textContent).toBe('2d6 Thresholds');
   });
 
   it('contains .dialog-preview section', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     expect(dialog.querySelector('.dialog-preview')).toBeTruthy();
   });
 
   it('contains preset-chip buttons (at least PbtA, D&D, +)', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     const chips = dialog.querySelectorAll('.preset-chip');
     expect(chips.length).toBeGreaterThanOrEqual(3);
@@ -154,14 +158,14 @@ describe('dialog', () => {
   });
 
   it('contains threshold-row elements matching category count', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     const rows = dialog.querySelectorAll('.threshold-row');
     expect(rows.length).toBe(config2d6.categories.length);
   });
 
   it('floor row has no input[type="number"] and no .threshold-remove', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     const rows = dialog.querySelectorAll('.threshold-row');
     const floorRow = rows[0];
@@ -170,7 +174,7 @@ describe('dialog', () => {
   });
 
   it('non-floor rows have input[type="number"] and .threshold-remove', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     const rows = dialog.querySelectorAll('.threshold-row');
     for (let i = 1; i < rows.length; i++) {
@@ -180,13 +184,13 @@ describe('dialog', () => {
   });
 
   it('has .threshold-add button', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     expect(dialog.querySelector('.threshold-add')).toBeTruthy();
   });
 
   it('built-in preset has disabled threshold-row inputs', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     const inputs = dialog.querySelectorAll('.threshold-row input');
     for (const input of inputs) {
@@ -195,7 +199,7 @@ describe('dialog', () => {
   });
 
   it('.preset-name-input is hidden when built-in preset active', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
     const nameInput = dialog.querySelector('.preset-name-input') as HTMLElement;
     expect(nameInput.style.display).toBe('none');
@@ -204,14 +208,14 @@ describe('dialog', () => {
 
 describe('stacked-bar', () => {
   it('renders segments with inline background colors', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const bar = container.querySelector('stacked-bar')!;
     const segs = bar.querySelectorAll('.seg');
     expect(segs.length).toBe(3);
   });
 
   it('hides percentage text for segments below 5%', () => {
-    renderPage(container, [config2d6], 4, 4, false, false);
+    renderPage(container, [{ ...config2d6, minMod: 4, maxMod: 4 }], false, false);
     const segs = container.querySelectorAll('.seg');
     // Find the floor segment (Miss) — at +4 it should be ~2.78%
     const floorSeg = segs[segs.length - 1];
@@ -220,7 +224,7 @@ describe('stacked-bar', () => {
 
   it('omits 0% segments entirely', () => {
     // 1d20 -10: only Trivial, Very Easy, Easy are non-zero
-    renderPage(container, [config1d20], -10, -10, false, false);
+    renderPage(container, [{ ...config1d20, minMod: -10, maxMod: -10 }], false, false);
     const bar = container.querySelector('stacked-bar')!;
     const segs = bar.querySelectorAll('.seg');
     // Should have 3 segments, not 7
@@ -229,14 +233,14 @@ describe('stacked-bar', () => {
 
   it('shows more segments as modifier increases', () => {
     // 1d20 +0: Trivial through Hard are non-zero (5 segments)
-    renderPage(container, [config1d20], 0, 0, false, false);
+    renderPage(container, [{ ...config1d20, minMod: 0, maxMod: 0 }], false, false);
     const bar = container.querySelector('stacked-bar')!;
     const segs = bar.querySelectorAll('.seg');
     expect(segs.length).toBe(5);
   });
 
   it('sets tooltip data attributes on all segments', () => {
-    renderPage(container, [config2d6], 0, 0, false, false);
+    renderPage(container, [config2d6], false, false);
     const segs = container.querySelectorAll('.seg');
     for (const seg of segs) {
       expect(seg.getAttribute('data-tooltip')).toMatch(/\d+\.\d{2}%$/);

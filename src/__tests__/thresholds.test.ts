@@ -123,8 +123,6 @@ describe('IndexedDB persistence', () => {
   it('loadSettings returns defaults when no settings saved', async () => {
     const settings = await loadSettings();
     expect(settings.diceList).toEqual(['2d6', '2d12', '1d20']);
-    expect(settings.minMod).toBe(-2);
-    expect(settings.maxMod).toBe(5);
     expect(settings.showAdvantage).toBe(true);
     expect(settings.showDisadvantage).toBe(true);
   });
@@ -132,8 +130,6 @@ describe('IndexedDB persistence', () => {
   it('saveSettings and loadSettings round-trip', async () => {
     const toSave: SavedSettings = {
       diceList: ['1d6', '1d8'],
-      minMod: -3,
-      maxMod: 3,
       showAdvantage: false,
       showDisadvantage: true,
     };
@@ -150,6 +146,8 @@ describe('IndexedDB persistence', () => {
         { label: 'Hit', color: '#4ade80' },
       ],
       thresholds: [7, 10],
+      minMod: -2,
+      maxMod: 5,
     };
     await saveDiceThresholds('2d6', config);
     const loaded = await loadDiceThresholds('2d6');
@@ -233,10 +231,8 @@ describe('migrateFromLocalStorage', () => {
   });
 
   it('migrates settings from localStorage to IndexedDB', async () => {
-    const legacy: SavedSettings = {
+    const legacy = {
       diceList: ['1d4', '1d8'],
-      minMod: 0,
-      maxMod: 4,
       showAdvantage: false,
       showDisadvantage: false,
     };
@@ -247,10 +243,8 @@ describe('migrateFromLocalStorage', () => {
   });
 
   it('removes the localStorage key after migration', async () => {
-    const legacy: SavedSettings = {
+    const legacy = {
       diceList: ['1d10'],
-      minMod: -1,
-      maxMod: 2,
       showAdvantage: true,
       showDisadvantage: false,
     };
@@ -264,8 +258,6 @@ describe('migrateFromLocalStorage', () => {
     const settings = await loadSettings();
     expect(settings).toEqual({
       diceList: ['2d6', '2d12', '1d20'],
-      minMod: -2,
-      maxMod: 5,
       showAdvantage: true,
       showDisadvantage: true,
     });
