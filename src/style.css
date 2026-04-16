@@ -229,10 +229,6 @@ dice-row {
   flex-shrink: 0;
 }
 
-.range-swatch-miss { background: #f87171; }
-.range-swatch-weak { background: #facc15; }
-.range-swatch-strong { background: #4ade80; }
-
 /* ── Bar Chart ── */
 
 .bars {
@@ -301,10 +297,6 @@ stacked-bar .seg:last-child {
   line-height: 1;
 }
 
-.seg-s { background: #4ade80; }
-.seg-w { background: #facc15; }
-.seg-m { background: #f87171; }
-
 .mod-label {
   font-size: 10px;
   color: #888;
@@ -333,4 +325,207 @@ stacked-bar .seg:last-child {
   z-index: 10;
   pointer-events: none;
   border: 1px solid #333;
+}
+
+/* ── Gear Icon ── */
+
+.gear-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.gear-btn:hover {
+  color: #e0e0e0;
+}
+
+/* ── Dialog ── */
+
+dialog {
+  background: #12121f;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 90vw;
+  width: 800px;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #333;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* ── Dialog Preview ── */
+
+.dialog-preview {
+  padding: 16px;
+  border-bottom: 1px solid #333;
+  background: #0a0a14;
+}
+
+.dialog-preview .bars {
+  gap: 3px;
+}
+
+.dialog-preview stacked-bar {
+  height: 100px;
+}
+
+/* ── Preset Chips ── */
+
+.preset-chips {
+  padding: 12px 16px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.preset-chip {
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #333;
+  color: #ccc;
+}
+
+.preset-chip.active {
+  background: #4ade80;
+  color: #000;
+  border-color: #4ade80;
+  font-weight: 600;
+}
+
+.preset-chip-add {
+  width: 28px;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* ── Custom Preset Name ── */
+
+.preset-name-input {
+  padding: 8px 16px 12px;
+}
+
+.preset-name-input input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+
+/* ── Threshold Editor ── */
+
+.threshold-editor {
+  padding: 12px 16px;
+}
+
+.threshold-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #222;
+}
+
+.threshold-row input[type="color"] {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #555;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+
+.threshold-row input[type="text"] {
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #e0e0e0;
+  font-size: 13px;
+  flex: 1;
+}
+
+.threshold-row input[type="number"] {
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #e0e0e0;
+  font-size: 13px;
+  width: 50px;
+  text-align: center;
+}
+
+.threshold-row input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.threshold-remove {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  width: 24px;
+  padding: 0;
+}
+
+.threshold-remove:hover {
+  color: #f87171;
+}
+
+.threshold-add {
+  background: none;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 10px;
+  color: #4ade80;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.threshold-add:hover {
+  border-color: #4ade80;
 }
