@@ -5,6 +5,7 @@ import {
   loadSettings,
   saveSettings,
   loadDiceThresholds,
+  saveDiceThresholds,
   migrateFromLocalStorage,
   type DiceConfig,
 } from './thresholds';
@@ -106,8 +107,18 @@ export async function init(): Promise<void> {
     }
   }
 
+  function handleConfigChange(index: number, config: DiceConfig, presetName: string): void {
+    diceConfigs[index] = config;
+    saveDiceThresholds(config.label, {
+      presetName,
+      categories: config.categories,
+      thresholds: config.thresholds,
+    }).catch(() => {});
+    update();
+  }
+
   function update(): void {
-    renderPage(rowsContainer, diceConfigs, minMod, maxMod, showAdvantage, showDisadvantage);
+    renderPage(rowsContainer, diceConfigs, minMod, maxMod, showAdvantage, showDisadvantage, handleConfigChange);
     renderPills();
     save();
   }

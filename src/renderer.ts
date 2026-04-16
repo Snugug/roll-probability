@@ -1,5 +1,14 @@
 import { computeProbabilities, type RollMode } from './engine';
-import type { DiceConfig, ThresholdCategory } from './thresholds';
+import {
+  BUILTIN_PRESETS,
+  mapThresholds,
+  saveCustomPreset,
+  loadCustomPresets,
+  type DiceConfig,
+  type ThresholdCategory,
+  type ThresholdPreset,
+  type SavedCustomPreset,
+} from './thresholds';
 
 interface SegmentData {
   label: string;
@@ -141,6 +150,11 @@ class DiceRowElement extends HTMLElement {
   maxMod = 5;
   showAdvantage = true;
   showDisadvantage = true;
+  presetName = 'PbtA';
+  onConfigChange?: (config: DiceConfig, presetName: string) => void;
+
+  private _dialog!: HTMLDialogElement;
+  private _customPresets: SavedCustomPreset[] = [];
 
   connectedCallback() {
     const header = document.createElement('div');
@@ -151,19 +165,58 @@ class DiceRowElement extends HTMLElement {
     label.textContent = this.config.label;
     header.appendChild(label);
 
+    this._renderRangeItems(header);
+
+    // Gear icon button
+    const gearBtn = document.createElement('button');
+    gearBtn.className = 'gear-btn';
+    gearBtn.setAttribute('commandfor', 'dialog-' + this.config.label);
+    gearBtn.setAttribute('command', 'show-modal');
+    gearBtn.appendChild(createGearSvg());
+    header.appendChild(gearBtn);
+
+    this.appendChild(header);
+
+    // Dialog
+    this._dialog = document.createElement('dialog');
+    this._dialog.id = 'dialog-' + this.config.label;
+    this._buildDialogContent();
+    this.appendChild(this._dialog);
+
+    // Load custom presets async
+    loadCustomPresets().then(presets => {
+      this._customPresets = presets;
+      this._buildDialogContent();
+    }).catch(() => {
+      // Ignore errors loading presets
+    });
+
+    const barsContainer = document.createElement('div');
+    barsContainer.className = 'bars';
+
+    for (let mod = this.minMod; mod <= this.maxMod; mod++) {
+      const col = document.createElement('bar-column') as BarColumn;
+      col.config = this.config;
+      col.modifier = mod;
+      col.showAdvantage = this.showAdvantage;
+      col.showDisadvantage = this.showDisadvantage;
+      barsContainer.appendChild(col);
+    }
+
+    this.appendChild(barsContainer);
+  }
+
+  private _renderRangeItems(header: HTMLElement) {
     const { thresholds, categories } = this.config;
 
     for (let i = 0; i < categories.length; i++) {
       const cat = categories[i];
       let rangeText: string;
       if (i === 0) {
-        // Floor category: <threshold[0]
         rangeText = '<' + thresholds[0];
       } else if (i === categories.length - 1) {
-        // Ceiling category: threshold[i-1]+
         rangeText = thresholds[i - 1] + '+';
       } else {
-        // Middle category: threshold[i-1]–threshold[i]-1
         rangeText = thresholds[i - 1] + '\u2013' + (thresholds[i] - 1);
       }
 
@@ -181,24 +234,196 @@ class DiceRowElement extends HTMLElement {
 
       header.appendChild(rangeEl);
     }
+  }
 
-    // Gear icon button
-    const gearBtn = document.createElement('button');
-    gearBtn.className = 'gear-btn';
-    gearBtn.setAttribute('commandfor', 'dialog-' + this.config.label);
-    gearBtn.setAttribute('command', 'show-modal');
-    gearBtn.appendChild(createGearSvg());
-    header.appendChild(gearBtn);
+  private _isBuiltinPreset(): boolean {
+    return BUILTIN_PRESETS.some(p => p.name === this.presetName);
+  }
 
-    this.appendChild(header);
+  private _buildDialogContent() {
+    while (this._dialog.firstChild) {
+      this._dialog.removeChild(this._dialog.firstChild);
+    }
 
-    // Dialog placeholder
-    const dialog = document.createElement('dialog');
-    dialog.id = 'dialog-' + this.config.label;
-    this.appendChild(dialog);
+    const isBuiltin = this._isBuiltinPreset();
 
-    const barsContainer = document.createElement('div');
-    barsContainer.className = 'bars';
+    // Header
+    const dialogHeader = document.createElement('div');
+    dialogHeader.className = 'dialog-header';
+
+    const h3 = document.createElement('h3');
+    h3.textContent = this.config.label + ' Thresholds';
+    dialogHeader.appendChild(h3);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'dialog-close';
+    closeBtn.textContent = '\u00d7';
+    closeBtn.addEventListener('click', () => {
+      this._dialog.close();
+    });
+    dialogHeader.appendChild(closeBtn);
+
+    this._dialog.appendChild(dialogHeader);
+
+    // Live preview
+    const preview = document.createElement('div');
+    preview.className = 'dialog-preview';
+    this._renderPreviewBars(preview);
+    this._dialog.appendChild(preview);
+
+    // Preset chips
+    const chipsContainer = document.createElement('div');
+    chipsContainer.className = 'preset-chips';
+
+    for (const preset of BUILTIN_PRESETS) {
+      const chip = document.createElement('button');
+      chip.className = 'preset-chip';
+      if (this.presetName === preset.name) {
+        chip.classList.add('active');
+      }
+      chip.textContent = preset.name;
+      chip.addEventListener('click', () => {
+        this._switchToBuiltinPreset(preset);
+      });
+      chipsContainer.appendChild(chip);
+    }
+
+    for (const custom of this._customPresets) {
+      const chip = document.createElement('button');
+      chip.className = 'preset-chip';
+      if (this.presetName === custom.name) {
+        chip.classList.add('active');
+      }
+      chip.textContent = custom.name;
+      chip.addEventListener('click', () => {
+        this._switchToCustomPreset(custom);
+      });
+      chipsContainer.appendChild(chip);
+    }
+
+    const addPresetBtn = document.createElement('button');
+    addPresetBtn.className = 'preset-chip preset-add';
+    addPresetBtn.textContent = '+';
+    addPresetBtn.addEventListener('click', () => {
+      this._createCustomPreset();
+    });
+    chipsContainer.appendChild(addPresetBtn);
+
+    this._dialog.appendChild(chipsContainer);
+
+    // Preset name input
+    const nameInputContainer = document.createElement('div');
+    nameInputContainer.className = 'preset-name-input';
+    if (isBuiltin) {
+      nameInputContainer.style.display = 'none';
+    }
+
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Preset Name: ';
+    nameInputContainer.appendChild(nameLabel);
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = this.presetName;
+    nameInput.addEventListener('change', () => {
+      const oldName = this.presetName;
+      this.presetName = nameInput.value;
+      // Update the custom preset in storage
+      const custom = this._customPresets.find(p => p.name === oldName);
+      if (custom) {
+        custom.name = this.presetName;
+        saveCustomPreset(custom).catch(() => {});
+      }
+      this._buildDialogContent();
+    });
+    nameInputContainer.appendChild(nameInput);
+
+    this._dialog.appendChild(nameInputContainer);
+
+    // Threshold editor
+    const editor = document.createElement('div');
+    editor.className = 'threshold-editor';
+
+    const { categories, thresholds } = this.config;
+
+    for (let i = 0; i < categories.length; i++) {
+      const row = document.createElement('div');
+      row.className = 'threshold-row';
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.value = categories[i].color;
+      colorInput.disabled = isBuiltin;
+      colorInput.addEventListener('input', () => {
+        this.config.categories[i].color = colorInput.value;
+        this._onThresholdChange();
+      });
+      row.appendChild(colorInput);
+
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.value = categories[i].label;
+      labelInput.disabled = isBuiltin;
+      labelInput.addEventListener('input', () => {
+        this.config.categories[i].label = labelInput.value;
+        this._onThresholdChange();
+      });
+      row.appendChild(labelInput);
+
+      // Floor row (index 0) has no number input and no remove button
+      if (i > 0) {
+        const numInput = document.createElement('input');
+        numInput.type = 'number';
+        numInput.value = String(thresholds[i - 1]);
+        numInput.disabled = isBuiltin;
+        numInput.addEventListener('input', () => {
+          const val = parseInt(numInput.value, 10);
+          if (!isNaN(val)) {
+            this.config.thresholds[i - 1] = val;
+            this._onThresholdChange();
+          }
+        });
+        row.appendChild(numInput);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'threshold-remove';
+        removeBtn.textContent = '\u00d7';
+        removeBtn.disabled = isBuiltin;
+        removeBtn.addEventListener('click', () => {
+          this.config.categories.splice(i, 1);
+          this.config.thresholds.splice(i - 1, 1);
+          this._onThresholdChange();
+          this._buildDialogContent();
+        });
+        row.appendChild(removeBtn);
+      }
+
+      editor.appendChild(row);
+    }
+
+    this._dialog.appendChild(editor);
+
+    // Add threshold button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'threshold-add';
+    addBtn.textContent = 'Add Threshold';
+    addBtn.disabled = isBuiltin;
+    addBtn.addEventListener('click', () => {
+      const lastThreshold = this.config.thresholds.length > 0
+        ? this.config.thresholds[this.config.thresholds.length - 1]
+        : 5;
+      this.config.thresholds.push(lastThreshold + 5);
+      this.config.categories.push({ label: 'New', color: '#888888' });
+      this._onThresholdChange();
+      this._buildDialogContent();
+    });
+    this._dialog.appendChild(addBtn);
+  }
+
+  private _renderPreviewBars(container: HTMLElement) {
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
 
     for (let mod = this.minMod; mod <= this.maxMod; mod++) {
       const col = document.createElement('bar-column') as BarColumn;
@@ -206,10 +431,63 @@ class DiceRowElement extends HTMLElement {
       col.modifier = mod;
       col.showAdvantage = this.showAdvantage;
       col.showDisadvantage = this.showDisadvantage;
-      barsContainer.appendChild(col);
+      container.appendChild(col);
+    }
+  }
+
+  private _onThresholdChange() {
+    // Update preview
+    const preview = this._dialog.querySelector('.dialog-preview');
+    if (preview) {
+      this._renderPreviewBars(preview as HTMLElement);
     }
 
-    this.appendChild(barsContainer);
+    // Notify parent
+    if (this.onConfigChange) {
+      this.onConfigChange(this.config, this.presetName);
+    }
+  }
+
+  private _switchToBuiltinPreset(preset: ThresholdPreset) {
+    this.presetName = preset.name;
+    const mapped = mapThresholds(preset, this.config.count, this.config.sides);
+    this.config.thresholds = mapped;
+    this.config.categories = preset.categories.map(c => ({ ...c }));
+    this._onThresholdChange();
+    this._buildDialogContent();
+  }
+
+  private _switchToCustomPreset(custom: SavedCustomPreset) {
+    this.presetName = custom.name;
+    this.config.thresholds = [...custom.thresholds];
+    this.config.categories = custom.categories.map(c => ({ ...c }));
+    this._onThresholdChange();
+    this._buildDialogContent();
+  }
+
+  private _createCustomPreset() {
+    const id = Date.now();
+    const name = 'Custom ' + id;
+    const newPreset: SavedCustomPreset = {
+      name,
+      referenceDie: this.config.label,
+      thresholds: [...this.config.thresholds],
+      categories: this.config.categories.map(c => ({ ...c })),
+    };
+
+    saveCustomPreset(newPreset).then(savedId => {
+      newPreset.id = savedId;
+      this._customPresets.push(newPreset);
+      this.presetName = name;
+      this._onThresholdChange();
+      this._buildDialogContent();
+    }).catch(() => {
+      // Still add locally even if save fails
+      this._customPresets.push(newPreset);
+      this.presetName = name;
+      this._onThresholdChange();
+      this._buildDialogContent();
+    });
   }
 }
 
@@ -223,19 +501,27 @@ export function renderPage(
   minMod: number,
   maxMod: number,
   showAdvantage: boolean,
-  showDisadvantage: boolean
+  showDisadvantage: boolean,
+  onConfigChange?: (index: number, config: DiceConfig, presetName: string) => void
 ): void {
   while (container.firstChild) {
     container.removeChild(container.firstChild);
   }
 
-  for (const config of configs) {
+  for (let i = 0; i < configs.length; i++) {
+    const config = configs[i];
     const row = document.createElement('dice-row') as DiceRowElement;
     row.config = config;
     row.minMod = minMod;
     row.maxMod = maxMod;
     row.showAdvantage = showAdvantage;
     row.showDisadvantage = showDisadvantage;
+    if (onConfigChange) {
+      const idx = i;
+      row.onConfigChange = (cfg, presetName) => {
+        onConfigChange(idx, cfg, presetName);
+      };
+    }
     container.appendChild(row);
   }
 }

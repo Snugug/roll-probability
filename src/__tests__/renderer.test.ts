@@ -85,7 +85,8 @@ describe('dice-row', () => {
 
   it('creates bar-columns for each modifier in range', () => {
     renderPage(container, [config2d6], -1, 1, false, false);
-    expect(container.querySelectorAll('bar-column').length).toBe(3);
+    const bars = container.querySelector('.bars')!;
+    expect(bars.querySelectorAll('bar-column').length).toBe(3);
   });
 
   it('renders a gear icon button', () => {
@@ -106,12 +107,14 @@ describe('dice-row', () => {
 describe('bar-column', () => {
   it('shows all three sub-bars when both toggles on', () => {
     renderPage(container, [config2d6], 0, 0, true, true);
-    expect(container.querySelectorAll('stacked-bar').length).toBe(3);
+    const bars = container.querySelector('.bars')!;
+    expect(bars.querySelectorAll('stacked-bar').length).toBe(3);
   });
 
   it('shows only normal bar when both toggles off', () => {
     renderPage(container, [config2d6], 0, 0, false, false);
-    expect(container.querySelectorAll('stacked-bar').length).toBe(1);
+    const bars = container.querySelector('.bars')!;
+    expect(bars.querySelectorAll('stacked-bar').length).toBe(1);
   });
 
   it('renders positive modifier label', () => {
@@ -122,6 +125,80 @@ describe('bar-column', () => {
   it('renders negative modifier label', () => {
     renderPage(container, [config2d6], -1, -1, false, false);
     expect(container.querySelector('.mod-label')!.textContent).toBe('-1');
+  });
+});
+
+describe('dialog', () => {
+  it('contains .dialog-header h3 with "{label} Thresholds"', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    const h3 = dialog.querySelector('.dialog-header h3')!;
+    expect(h3.textContent).toBe('2d6 Thresholds');
+  });
+
+  it('contains .dialog-preview section', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    expect(dialog.querySelector('.dialog-preview')).toBeTruthy();
+  });
+
+  it('contains preset-chip buttons (at least PbtA, D&D, +)', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    const chips = dialog.querySelectorAll('.preset-chip');
+    expect(chips.length).toBeGreaterThanOrEqual(3);
+    const texts = Array.from(chips).map(c => c.textContent);
+    expect(texts).toContain('PbtA');
+    expect(texts).toContain('D&D');
+    expect(texts).toContain('+');
+  });
+
+  it('contains threshold-row elements matching category count', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    const rows = dialog.querySelectorAll('.threshold-row');
+    expect(rows.length).toBe(config2d6.categories.length);
+  });
+
+  it('floor row has no input[type="number"] and no .threshold-remove', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    const rows = dialog.querySelectorAll('.threshold-row');
+    const floorRow = rows[0];
+    expect(floorRow.querySelector('input[type="number"]')).toBeNull();
+    expect(floorRow.querySelector('.threshold-remove')).toBeNull();
+  });
+
+  it('non-floor rows have input[type="number"] and .threshold-remove', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    const rows = dialog.querySelectorAll('.threshold-row');
+    for (let i = 1; i < rows.length; i++) {
+      expect(rows[i].querySelector('input[type="number"]')).toBeTruthy();
+      expect(rows[i].querySelector('.threshold-remove')).toBeTruthy();
+    }
+  });
+
+  it('has .threshold-add button', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    expect(dialog.querySelector('.threshold-add')).toBeTruthy();
+  });
+
+  it('built-in preset has disabled threshold-row inputs', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    const inputs = dialog.querySelectorAll('.threshold-row input');
+    for (const input of inputs) {
+      expect((input as HTMLInputElement).disabled).toBe(true);
+    }
+  });
+
+  it('.preset-name-input is hidden when built-in preset active', () => {
+    renderPage(container, [config2d6], 0, 0, false, false);
+    const dialog = container.querySelector('dialog')!;
+    const nameInput = dialog.querySelector('.preset-name-input') as HTMLElement;
+    expect(nameInput.style.display).toBe('none');
   });
 });
 
