@@ -201,7 +201,7 @@ class DiceRowElement extends HTMLElement {
       const cat = categories[i];
       let rangeText: string;
       if (i === 0) {
-        rangeText = '<' + thresholds[0];
+        rangeText = '≤' + (thresholds[0] - 1);
       } else if (i === categories.length - 1) {
         rangeText = thresholds[i - 1] + '+';
       } else {

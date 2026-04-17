@@ -76,7 +76,7 @@ describe('dice-row', () => {
     expect(row.querySelector('.dice-label')!.textContent).toBe('2d6');
     const items = row.querySelectorAll('.dice-range-item');
     expect(items.length).toBe(3);
-    expect(items[0].textContent).toBe('Miss <7');
+    expect(items[0].textContent).toBe('Miss ≤6');
     expect(items[1].textContent).toBe('Weak Hit 7\u20139');
     expect(items[2].textContent).toBe('Strong Hit 10+');
   });
@@ -93,7 +93,7 @@ describe('dice-row', () => {
     renderPage(container, [config1d20], false, false);
     const items = container.querySelectorAll('.dice-range-item');
     expect(items.length).toBe(7);
-    expect(items[0].textContent).toBe('Trivial <5');
+    expect(items[0].textContent).toBe('Trivial ≤4');
     expect(items[6].textContent).toBe('Nearly Impossible 30+');
   });
 

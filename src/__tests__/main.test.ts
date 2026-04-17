@@ -406,7 +406,7 @@ describe('main — persistence', () => {
     await new Promise(r => setTimeout(r, 50));
     // Page should have re-rendered with updated thresholds
     const rangeItems = document.querySelector('dice-row')!.querySelectorAll('.dice-range-item');
-    expect(rangeItems[0].textContent).toContain('<8');
+    expect(rangeItems[0].textContent).toContain('≤7');
   });
 
   it('saves dice thresholds to IndexedDB when config changes via dialog', async () => {
