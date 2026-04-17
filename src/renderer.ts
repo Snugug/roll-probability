@@ -194,6 +194,9 @@ class DiceRowElement extends HTMLElement {
   private _renderRangeItems(header: HTMLElement) {
     const { thresholds, categories } = this.config;
 
+    const rangeWrapper = document.createElement('div');
+    rangeWrapper.className = 'dice-ranges';
+
     for (let i = 0; i < categories.length; i++) {
       const cat = categories[i];
       let rangeText: string;
@@ -217,8 +220,12 @@ class DiceRowElement extends HTMLElement {
       text.textContent = cat.label + ' ' + rangeText;
       rangeEl.appendChild(text);
 
-      header.appendChild(rangeEl);
+
+
+      rangeWrapper.appendChild(rangeEl);
     }
+
+    header.appendChild(rangeWrapper);
   }
 
   private _isBuiltinPreset(): boolean {

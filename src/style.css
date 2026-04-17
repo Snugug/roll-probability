@@ -206,11 +206,18 @@ dice-row {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
+  gap: 8px;
 }
 
 .dice-label {
   font-size: 15px;
   font-weight: 700;
+}
+
+.dice-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 2px;
 }
 
 .dice-range-item {
@@ -220,6 +227,7 @@ dice-row {
   font-size: 11px;
   color: #aaa;
   margin-left: 10px;
+  flex-shrink: 0;
 }
 
 .range-swatch {
@@ -234,12 +242,23 @@ dice-row {
 .bars {
   display: flex;
   gap: 8px;
+  overflow-x: auto;
 }
 
 bar-column {
   flex: 1;
   text-align: center;
   min-width: 0;
+  min-width: 30px;
+
+  &:has(stacked-bar:nth-of-type(2)) {
+    min-width: 70px;
+  }
+
+  &:has(stacked-bar:nth-of-type(3)) {
+    min-width: 100px;
+  }
+  
 }
 
 .bar-type-row {
