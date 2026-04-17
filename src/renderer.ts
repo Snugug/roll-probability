@@ -131,6 +131,7 @@ class DiceRowElement extends HTMLElement {
   onDialogClose?: () => void;
 
   private _dialog!: HTMLDialogElement;
+  private _floorLabel: HTMLSpanElement | null = null;
   private _customPresets: SavedCustomPreset[] = [];
 
   connectedCallback() {
@@ -436,6 +437,7 @@ class DiceRowElement extends HTMLElement {
         const floorLabel = document.createElement('span');
         floorLabel.className = 'threshold-floor-label';
         floorLabel.textContent = '\u2264' + (thresholds.length > 0 ? thresholds[0] - 1 : '?');
+        this._floorLabel = floorLabel;
         row.appendChild(floorLabel);
       } else {
         const numInput = document.createElement('input');
@@ -515,6 +517,11 @@ class DiceRowElement extends HTMLElement {
   private _onThresholdChange() {
     // Keep config.presetName in sync with this.presetName
     this.config.presetName = this.presetName;
+
+    // Update floor label to reflect current lowest threshold
+    if (this._floorLabel && this.config.thresholds.length > 0) {
+      this._floorLabel.textContent = '\u2264' + (this.config.thresholds[0] - 1);
+    }
 
     // Update preview
     const preview = this._dialog.querySelector('.dialog-preview');
