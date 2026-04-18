@@ -485,13 +485,6 @@ stacked-bar .seg:last-child {
   font-variant-numeric: tabular-nums;
 }
 
-.dice-table .crit-col {
-  background: #16162a;
-}
-
-.dice-table thead .crit-col {
-  background: #1e1e32;
-}
 
 .dice-table .mode-header-row th {
   font-size: 9px;
