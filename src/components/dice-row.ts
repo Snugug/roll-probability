@@ -1,6 +1,9 @@
 import { loadCustomPresets, type DiceConfig } from '../thresholds';
 import { ThresholdEditorState } from '../editor-state';
+import { computeViewData, type ModifierData, type DiceView } from './dice-view-data';
+import { BarChartView } from './bar-chart-view';
 import { BarColumn } from './bar-column';
+import { DiceTableElement } from './dice-table';
 import { buildDialogContent, renderCritSubInputs } from './dialog-builder';
 
 function createGearSvg(): SVGSVGElement {
@@ -18,6 +21,32 @@ function createGearSvg(): SVGSVGElement {
   return svg;
 }
 
+function createTableSvg(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '18');
+  svg.setAttribute('height', '18');
+  svg.setAttribute('viewBox', '0 -960 960 960');
+  svg.setAttribute('fill', 'currentColor');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', 'M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm240-240H200v160h240v-160Zm80 0v160h240v-160H520Zm-80-80v-160H200v160h240Zm80 0h240v-160H520v160ZM200-680h560v-80H200v80Z');
+  svg.appendChild(path);
+  return svg;
+}
+
+function createBarChartSvg(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '18');
+  svg.setAttribute('height', '18');
+  svg.setAttribute('viewBox', '0 -960 960 960');
+  svg.setAttribute('fill', 'currentColor');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', 'M160-160v-440h160v440H160Zm0-480v-160h160v160H160Zm240 480v-320h160v320H400Zm0-360v-160h160v160H400Zm240 360v-200h160v200H640Zm0-240v-160h160v160H640Z');
+  svg.appendChild(path);
+  return svg;
+}
+
 export class DiceRowElement extends HTMLElement {
   config!: DiceConfig;
   showAdvantage = true;
@@ -27,6 +56,11 @@ export class DiceRowElement extends HTMLElement {
 
   _dialog!: HTMLDialogElement;
   _state!: ThresholdEditorState;
+  private _viewData: ModifierData[] = [];
+  private _barView!: BarChartView;
+  private _tableView!: DiceTableElement;
+  private _activeView!: DiceView;
+  private _toggleBtn!: HTMLButtonElement;
 
   connectedCallback() {
     this._state = new ThresholdEditorState(this.config, (kind) => {
@@ -50,6 +84,25 @@ export class DiceRowElement extends HTMLElement {
 
     this._renderRangeItems(header);
 
+    // Toggle view button
+    this._toggleBtn = document.createElement('button');
+    this._toggleBtn.className = 'view-toggle-btn';
+    this._toggleBtn.appendChild(
+      this.config.viewMode === 'table' ? createBarChartSvg() : createTableSvg()
+    );
+    this._toggleBtn.addEventListener('click', () => {
+      const isTable = this.config.viewMode === 'table';
+      this.config.viewMode = isTable ? 'bar' : 'table';
+      this._toggleBtn.replaceChildren(
+        this.config.viewMode === 'table' ? createBarChartSvg() : createTableSvg()
+      );
+      this._swapView();
+      if (this.onConfigChange) {
+        this.onConfigChange(this.config, this._state.presetName);
+      }
+    });
+    header.appendChild(this._toggleBtn);
+
     const gearBtn = document.createElement('button');
     gearBtn.className = 'gear-btn';
     gearBtn.setAttribute('commandfor', 'dialog-' + this.config.label);
@@ -72,19 +125,17 @@ export class DiceRowElement extends HTMLElement {
       this._buildDialogContent();
     }).catch(() => {});
 
-    const barsContainer = document.createElement('div');
-    barsContainer.className = 'bars';
+    // Compute view data
+    this._viewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
 
-    for (let mod = this.config.minMod; mod <= this.config.maxMod; mod++) {
-      const col = document.createElement('bar-column') as BarColumn;
-      col.config = this.config;
-      col.modifier = mod;
-      col.showAdvantage = this.showAdvantage;
-      col.showDisadvantage = this.showDisadvantage;
-      barsContainer.appendChild(col);
-    }
+    // Create both views
+    this._barView = document.createElement('bar-chart-view') as BarChartView;
+    this._tableView = document.createElement('dice-table') as DiceTableElement;
 
-    this.appendChild(barsContainer);
+    // Attach the active view
+    this._activeView = this.config.viewMode === 'table' ? this._tableView : this._barView;
+    this._activeView.update(this._viewData, this.config, this.showAdvantage, this.showDisadvantage);
+    this.appendChild(this._activeView);
   }
 
   private _renderRangeItems(header: HTMLElement) {
@@ -168,22 +219,21 @@ export class DiceRowElement extends HTMLElement {
     });
   }
 
-  private _renderPreviewBars(container: HTMLElement) {
-    container.replaceChildren();
-
+  private _renderPreviewBars(previewContainer: HTMLElement) {
+    previewContainer.replaceChildren();
+    const previewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
     const barsWrapper = document.createElement('div');
     barsWrapper.className = 'bars';
-
-    for (let mod = this.config.minMod; mod <= this.config.maxMod; mod++) {
+    for (const modData of previewData) {
       const col = document.createElement('bar-column') as BarColumn;
-      col.config = this.config;
-      col.modifier = mod;
+      col.modifier = modData.modifier;
       col.showAdvantage = this.showAdvantage;
       col.showDisadvantage = this.showDisadvantage;
+      col.critConfig = this.config.criticals;
+      col.modeResults = modData.results;
       barsWrapper.appendChild(col);
     }
-
-    container.appendChild(barsWrapper);
+    previewContainer.appendChild(barsWrapper);
   }
 
   private _updateDialogValues(): void {
@@ -201,6 +251,17 @@ export class DiceRowElement extends HTMLElement {
     if (preview) {
       this._renderPreviewBars(preview);
     }
+
+    // Update the active view with recomputed data
+    this._viewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
+    this._activeView.update(this._viewData, this.config, this.showAdvantage, this.showDisadvantage);
+  }
+
+  private _swapView(): void {
+    this._activeView.remove();
+    this._activeView = this.config.viewMode === 'table' ? this._tableView : this._barView;
+    this._activeView.update(this._viewData, this.config, this.showAdvantage, this.showDisadvantage);
+    this.appendChild(this._activeView);
   }
 }
 

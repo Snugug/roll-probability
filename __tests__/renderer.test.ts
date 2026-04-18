@@ -871,6 +871,57 @@ describe('dialog crit editor', () => {
   });
 });
 
+describe('view toggle', () => {
+  it('renders a toggle button before the gear button', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const header = container.querySelector('.dice-header')!;
+    const toggleBtn = header.querySelector('.view-toggle-btn');
+    expect(toggleBtn).toBeTruthy();
+    const gearBtn = header.querySelector('.gear-btn')!;
+    const children = Array.from(header.children);
+    expect(children.indexOf(toggleBtn!)).toBeLessThan(children.indexOf(gearBtn));
+  });
+
+  it('defaults to bar chart view', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    expect(container.querySelector('bar-chart-view')).toBeTruthy();
+    expect(container.querySelector('dice-table')).toBeNull();
+  });
+
+  it('switches to table view on toggle click', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const toggleBtn = container.querySelector('.view-toggle-btn') as HTMLButtonElement;
+    toggleBtn.click();
+    expect(container.querySelector('dice-table')).toBeTruthy();
+    expect(container.querySelector('bar-chart-view')).toBeNull();
+  });
+
+  it('switches back to bar chart on second toggle click', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const toggleBtn = container.querySelector('.view-toggle-btn') as HTMLButtonElement;
+    toggleBtn.click();
+    toggleBtn.click();
+    expect(container.querySelector('bar-chart-view')).toBeTruthy();
+    expect(container.querySelector('dice-table')).toBeNull();
+  });
+
+  it('initializes in table mode when config.viewMode is table', () => {
+    const cfg: DiceConfig = { ...config2d6, viewMode: 'table' };
+    renderPage(container, [cfg], false, false);
+    expect(container.querySelector('dice-table')).toBeTruthy();
+    expect(container.querySelector('bar-chart-view')).toBeNull();
+  });
+
+  it('sets config.viewMode on toggle and calls onConfigChange', () => {
+    let savedConfig: DiceConfig | null = null;
+    renderPage(container, [{ ...config2d6 }], false, false, (_idx, cfg) => { savedConfig = cfg; });
+    const toggleBtn = container.querySelector('.view-toggle-btn') as HTMLButtonElement;
+    toggleBtn.click();
+    expect(savedConfig).not.toBeNull();
+    expect(savedConfig!.viewMode).toBe('table');
+  });
+});
+
 describe('stacked-bar nullish coalescing branches', () => {
   it('_renderSubdivided handles missing crit array entries via ?? 0', () => {
     // Create a stacked-bar with segments but shorter crit arrays to trigger ?? 0
