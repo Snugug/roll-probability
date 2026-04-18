@@ -383,7 +383,6 @@ stacked-bar .seg:last-child {
 /* ── Gear Icon ── */
 
 .gear-btn {
-  margin-left: auto;
   background: none;
   border: none;
   color: #666;
@@ -398,6 +397,106 @@ stacked-bar .seg:last-child {
 
 .gear-btn:hover {
   color: #e0e0e0;
+}
+
+.view-toggle-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s;
+  margin-left: auto;
+}
+
+.view-toggle-btn:hover {
+  color: #e0e0e0;
+}
+
+/* ── Table View ── */
+
+.table-wrapper {
+  overflow: auto clip;
+  max-height: 400px;
+}
+
+.dice-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+
+.dice-table th,
+.dice-table td {
+  padding: 4px 8px;
+  text-align: center;
+  border: 1px solid #2a2a3e;
+}
+
+.dice-table thead th {
+  background: #1a1a2e;
+  color: #ccc;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+.dice-table thead th.corner {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.dice-table tbody th {
+  background: #1a1a2e;
+  color: #ccc;
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.dice-table tbody td {
+  background: #12121f;
+  font-variant-numeric: tabular-nums;
+}
+
+.dice-table .crit-col {
+  background: #16162a;
+}
+
+.dice-table thead .crit-col {
+  background: #1e1e32;
+}
+
+.dice-table .mode-header-row th {
+  font-size: 9px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.dice-table .mode-header-row .dis { color: #f87171; }
+.dice-table .mode-header-row .nor { color: #888; }
+.dice-table .mode-header-row .adv { color: #4ade80; }
+
+.dice-table .range-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
 }
 
 /* ── Dialog ── */
