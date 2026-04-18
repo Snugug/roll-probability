@@ -1,7 +1,7 @@
 import { BUILTIN_PRESETS, type DiceConfig } from '../thresholds';
 import type { ThresholdEditorState } from '../editor-state';
 import { renderCritSubInputs } from './crit-sub-inputs';
-import { createTableSvg, createBarChartSvg } from './icons';
+import { createTableSvg, createBarChartSvg, createCloseSvg } from './icons';
 
 export { renderCritSubInputs } from './crit-sub-inputs';
 
@@ -40,7 +40,7 @@ export function buildDialogContent(ctx: DialogContext): void {
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'dialog-close';
-  closeBtn.textContent = '\u00d7';
+  closeBtn.appendChild(createCloseSvg());
   closeBtn.addEventListener('click', () => {
     ctx.dialog.close();
   });

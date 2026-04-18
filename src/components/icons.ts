@@ -24,6 +24,18 @@ export function createTableSvg(): SVGSVGElement {
   return svg;
 }
 
+export function createCloseSvg(): SVGSVGElement {
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', '18');
+  svg.setAttribute('height', '18');
+  svg.setAttribute('viewBox', '0 -960 960 960');
+  svg.setAttribute('fill', 'currentColor');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', 'm256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z');
+  svg.appendChild(path);
+  return svg;
+}
+
 export function createBarChartSvg(): SVGSVGElement {
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('width', '18');
