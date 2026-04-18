@@ -766,10 +766,6 @@ class DiceRowElement extends HTMLElement {
       });
       container.appendChild(missSelect);
     } else if (crit.type === 'doubles') {
-      const colorLabel = document.createElement('span');
-      colorLabel.textContent = 'Color:';
-      container.appendChild(colorLabel);
-
       const colorInput = document.createElement('input');
       colorInput.type = 'color';
       colorInput.value = crit.color;
@@ -781,10 +777,6 @@ class DiceRowElement extends HTMLElement {
         }
       });
       container.appendChild(colorInput);
-
-      const labelLabel = document.createElement('span');
-      labelLabel.textContent = 'Label:';
-      container.appendChild(labelLabel);
 
       const labelInput = document.createElement('input');
       labelInput.type = 'text';
