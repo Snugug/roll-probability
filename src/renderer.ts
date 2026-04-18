@@ -282,9 +282,20 @@ class DiceRowElement extends HTMLElement {
       }
     }
 
-    // For natural crits (not tied to specific thresholds), crit hit goes last
+    // For natural crits, crit hit goes last
+    // For conditional-doubles with out-of-bounds indices, also append as fallback
     if (hasCritSwatches && criticals.type === 'natural') {
       rangeWrapper.appendChild(this._makeCritRangeItem('Crit Hit', hitCatColor, 'range-swatch-crit-hit'));
+    } else if (hasCritSwatches && criticals.type === 'conditional-doubles') {
+      if (missBeforeCat < 0 || missBeforeCat >= categories.length) {
+        rangeWrapper.insertBefore(
+          this._makeCritRangeItem('Crit Miss', missCatColor, 'range-swatch-crit-miss'),
+          rangeWrapper.firstChild
+        );
+      }
+      if (hitAfterCat < 0 || hitAfterCat >= categories.length) {
+        rangeWrapper.appendChild(this._makeCritRangeItem('Crit Hit', hitCatColor, 'range-swatch-crit-hit'));
+      }
     }
 
     // Unconditional doubles: single swatch at end

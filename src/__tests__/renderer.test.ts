@@ -665,6 +665,17 @@ describe('header crit swatches', () => {
     expect(container.querySelectorAll('.range-swatch-crit-miss').length).toBe(0);
   });
 
+  it('falls back to #888 swatch color when conditional-doubles index is out of bounds', () => {
+    const cfg = deepConfig(config2d6, {
+      criticals: { type: 'conditional-doubles', hit: 99, miss: 99 },
+    });
+    renderPage(container, [cfg], false, false);
+    const hitSwatch = container.querySelector('.range-swatch-crit-hit') as HTMLElement;
+    const missSwatch = container.querySelector('.range-swatch-crit-miss') as HTMLElement;
+    expect(hitSwatch.style.backgroundColor).toBe('#888');
+    expect(missSwatch.style.backgroundColor).toBe('#888');
+  });
+
   it('shows no crit swatches for type none', () => {
     renderPage(container, [config2d6], false, false);
     expect(container.querySelectorAll('.range-swatch-crit-hit').length).toBe(0);
