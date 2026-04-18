@@ -43,6 +43,7 @@ async function buildConfigWithSaved(label: string): Promise<DiceConfig | null> {
       presetName: saved.presetName,
       minMod: saved.minMod ?? -2,
       maxMod: saved.maxMod ?? 5,
+      viewMode: saved.viewMode,
     };
   }
 
@@ -112,6 +113,7 @@ export async function init(): Promise<void> {
       criticals: config.criticals,
       minMod: config.minMod,
       maxMod: config.maxMod,
+      viewMode: config.viewMode,
     }).catch(() => {});
   }
 

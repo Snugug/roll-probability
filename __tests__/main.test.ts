@@ -438,6 +438,35 @@ describe('main — persistence', () => {
       expect(saved!.maxMod).toBe(3);
     }
   });
+
+  it('preserves viewMode through save and load cycle', async () => {
+    await saveDiceThresholds('2d6', {
+      presetName: 'PbtA',
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Weak Hit', color: '#facc15' },
+        { label: 'Strong Hit', color: '#4ade80' },
+      ],
+      thresholds: [7, 10],
+      minMod: -2,
+      maxMod: 5,
+      viewMode: 'table',
+    });
+    const loaded = await loadDiceThresholds('2d6');
+    expect(loaded!.viewMode).toBe('table');
+  });
+
+  it('defaults viewMode to bar when not present', async () => {
+    await saveDiceThresholds('2d6', {
+      presetName: 'PbtA',
+      categories: [{ label: 'Miss', color: '#f87171' }],
+      thresholds: [],
+      minMod: 0,
+      maxMod: 0,
+    });
+    const loaded = await loadDiceThresholds('2d6');
+    expect(loaded!.viewMode).toBeUndefined();
+  });
 });
 
 describe('main — migration', () => {

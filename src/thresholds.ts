@@ -14,6 +14,7 @@ export interface SavedDiceThreshold {
   criticals?: CriticalConfig;
   minMod: number;
   maxMod: number;
+  viewMode?: 'bar' | 'table';
 }
 
 export interface SavedCustomPreset {
@@ -48,6 +49,7 @@ export interface DiceConfig {
   presetName?: string;
   minMod: number;
   maxMod: number;
+  viewMode?: 'bar' | 'table';
 }
 
 export const PBTA_PRESET: ThresholdPreset = {
