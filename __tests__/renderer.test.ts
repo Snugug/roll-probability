@@ -920,6 +920,39 @@ describe('view toggle', () => {
     expect(savedConfig).not.toBeNull();
     expect(savedConfig!.viewMode).toBe('table');
   });
+
+  it('dialog has a view toggle button next to close', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const row = container.querySelector('dice-row') as any;
+    const dialogHeader = row._dialog.querySelector('.dialog-header')!;
+    const dialogToggle = dialogHeader.querySelector('.view-toggle-btn');
+    const closeBtn = dialogHeader.querySelector('.dialog-close');
+    expect(dialogToggle).toBeTruthy();
+    expect(closeBtn).toBeTruthy();
+    const children = Array.from(dialogHeader.children);
+    expect(children.indexOf(dialogToggle!)).toBeLessThan(children.indexOf(closeBtn!));
+  });
+
+  it('dialog toggle switches view mode and updates main view', () => {
+    let savedConfig: DiceConfig | null = null;
+    renderPage(container, [{ ...config2d6 }], false, false, (_idx, cfg) => { savedConfig = cfg; });
+    const row = container.querySelector('dice-row') as any;
+    const dialogToggle = row._dialog.querySelector('.dialog-header .view-toggle-btn') as HTMLButtonElement;
+    dialogToggle.click();
+    expect(container.querySelector('dice-table')).toBeTruthy();
+    expect(container.querySelector('bar-chart-view')).toBeNull();
+    expect(savedConfig!.viewMode).toBe('table');
+  });
+
+  it('dialog toggle switches back to bar view on second click', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const row = container.querySelector('dice-row') as any;
+    const dialogToggle = row._dialog.querySelector('.dialog-header .view-toggle-btn') as HTMLButtonElement;
+    dialogToggle.click();
+    dialogToggle.click();
+    expect(container.querySelector('bar-chart-view')).toBeTruthy();
+    expect(container.querySelector('dice-table')).toBeNull();
+  });
 });
 
 describe('stacked-bar nullish coalescing branches', () => {

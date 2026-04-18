@@ -1,6 +1,7 @@
 import { BUILTIN_PRESETS, type DiceConfig } from '../thresholds';
 import type { ThresholdEditorState } from '../editor-state';
 import { renderCritSubInputs } from './crit-sub-inputs';
+import { createTableSvg, createBarChartSvg } from './icons';
 
 export { renderCritSubInputs } from './crit-sub-inputs';
 
@@ -9,6 +10,7 @@ export interface DialogContext {
   config: DiceConfig;
   state: ThresholdEditorState;
   renderPreviewBars: (container: HTMLElement) => void;
+  onToggleView: () => void;
 }
 
 export function buildDialogContent(ctx: DialogContext): void {
@@ -22,6 +24,19 @@ export function buildDialogContent(ctx: DialogContext): void {
   const h3 = document.createElement('h3');
   h3.textContent = ctx.config.label + ' Thresholds';
   dialogHeader.appendChild(h3);
+
+  const viewToggleBtn = document.createElement('button');
+  viewToggleBtn.className = 'view-toggle-btn';
+  viewToggleBtn.appendChild(
+    ctx.config.viewMode === 'table' ? createBarChartSvg() : createTableSvg()
+  );
+  viewToggleBtn.addEventListener('click', () => {
+    ctx.onToggleView();
+    viewToggleBtn.replaceChildren(
+      ctx.config.viewMode === 'table' ? createBarChartSvg() : createTableSvg()
+    );
+  });
+  dialogHeader.appendChild(viewToggleBtn);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'dialog-close';
