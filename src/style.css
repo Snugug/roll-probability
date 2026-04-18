@@ -485,6 +485,14 @@ stacked-bar .seg:last-child {
   font-variant-numeric: tabular-nums;
 }
 
+.dice-table tbody tr:nth-child(even) td {
+  background: #15152a;
+}
+
+.dice-table tbody tr:nth-child(even) th {
+  background: #1d1d34;
+}
+
 
 .dice-table .mode-header-row th {
   font-size: 9px;
