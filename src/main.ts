@@ -81,9 +81,7 @@ export async function init(): Promise<void> {
   }
 
   function renderPills(): void {
-    while (pillsContainer.firstChild) {
-      pillsContainer.removeChild(pillsContainer.firstChild);
-    }
+    pillsContainer.replaceChildren();
     for (let i = 0; i < diceConfigs.length; i++) {
       const pill = document.createElement('div');
       pill.className = 'dice-pill';

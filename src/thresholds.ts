@@ -86,25 +86,26 @@ const DEFAULT_SETTINGS: SavedSettings = {
   showDisadvantage: true,
 };
 
+function diceRange(count: number, sides: number): { min: number; max: number; range: number } {
+  const min = count;
+  const max = count * sides;
+  return { min, max, range: max - min };
+}
+
+function scaleValue(value: number, ref: { min: number; range: number }, target: { min: number; range: number }): number {
+  return target.min + Math.round(((value - ref.min) / ref.range) * target.range);
+}
+
 export function mapThresholds(
   preset: ThresholdPreset,
   targetCount: number,
   targetSides: number
 ): number[] {
-  const ref = parseDiceNotation(preset.referenceDie);
-  if (!ref) return preset.thresholds;
-
-  const refMin = ref.count;
-  const refMax = ref.count * ref.sides;
-  const refRange = refMax - refMin;
-
-  const targetMin = targetCount;
-  const targetMax = targetCount * targetSides;
-  const targetRange = targetMax - targetMin;
-
-  return preset.thresholds.map(t => {
-    return targetMin + Math.round(((t - refMin) / refRange) * targetRange);
-  });
+  const parsed = parseDiceNotation(preset.referenceDie);
+  if (!parsed) return preset.thresholds;
+  const ref = diceRange(parsed.count, parsed.sides);
+  const target = diceRange(targetCount, targetSides);
+  return preset.thresholds.map(t => scaleValue(t, ref, target));
 }
 
 export function mapCriticals(
@@ -113,18 +114,14 @@ export function mapCriticals(
   targetSides: number
 ): CriticalConfig {
   if (preset.criticals.type !== 'natural') return preset.criticals;
-  const ref = parseDiceNotation(preset.referenceDie);
-  if (!ref) return preset.criticals;
-  const refMin = ref.count;
-  const refMax = ref.count * ref.sides;
-  const refRange = refMax - refMin;
-  const targetMin = targetCount;
-  const targetMax = targetCount * targetSides;
-  const targetRange = targetMax - targetMin;
+  const parsed = parseDiceNotation(preset.referenceDie);
+  if (!parsed) return preset.criticals;
+  const ref = diceRange(parsed.count, parsed.sides);
+  const target = diceRange(targetCount, targetSides);
   return {
     type: 'natural',
-    hit: targetMin + Math.round(((preset.criticals.hit - refMin) / refRange) * targetRange),
-    miss: targetMin + Math.round(((preset.criticals.miss - refMin) / refRange) * targetRange),
+    hit: scaleValue(preset.criticals.hit, ref, target),
+    miss: scaleValue(preset.criticals.miss, ref, target),
   };
 }
 

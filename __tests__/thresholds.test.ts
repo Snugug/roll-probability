@@ -17,7 +17,7 @@ import {
   type SavedSettings,
   type SavedDiceThreshold,
   type SavedCustomPreset,
-} from '../thresholds';
+} from '../src/thresholds';
 
 describe('built-in presets', () => {
   it('PbtA preset has correct structure', () => {

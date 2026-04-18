@@ -5,7 +5,7 @@ import {
   computeDisadvantageProbabilities,
   computeProbabilities,
   parseDiceNotation,
-} from '../engine';
+} from '../src/engine';
 
 describe('computeNormalProbabilities', () => {
   it('computes 2d6 with PbtA thresholds [7, 10] and no modifier', () => {

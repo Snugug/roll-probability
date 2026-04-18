@@ -5,7 +5,7 @@ import {
   loadSettings,
   loadDiceThresholds,
   type SavedSettings,
-} from '../thresholds';
+} from '../src/thresholds';
 
 const STORAGE_KEY = 'dice-visualizer-settings';
 
@@ -89,7 +89,7 @@ async function clearIndexedDB(): Promise<void> {
 }
 
 async function loadInit() {
-  const mod = await import('../main');
+  const mod = await import('../src/main');
   return mod.init;
 }
 

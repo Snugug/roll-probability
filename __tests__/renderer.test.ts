@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { DiceConfig } from '../thresholds';
-import * as thresholds from '../thresholds';
-import { renderPage } from '../renderer';
+import type { DiceConfig } from '../src/thresholds';
+import * as thresholds from '../src/thresholds';
+import { renderPage } from '../src/renderer';
 
 const config2d6: DiceConfig = {
   count: 2, sides: 6, label: '2d6',
@@ -924,7 +924,7 @@ describe('custom preset without criticals field', () => {
     const row = container.querySelector('dice-row') as any;
     await new Promise(r => setTimeout(r, 50));
     // Manually inject a custom preset without criticals field
-    row._customPresets = [{
+    row._state.customPresets = [{
       name: 'No Crits',
       referenceDie: '2d6',
       thresholds: [7, 10],
