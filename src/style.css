@@ -237,6 +237,14 @@ dice-row {
   flex-shrink: 0;
 }
 
+.range-swatch-crit {
+  background-color: #888;
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 1.5px,
+    rgba(255, 255, 255, 0.6) 1.5px, rgba(255, 255, 255, 0.6) 3px
+  );
+}
+
 /* ── Bar Chart ── */
 
 .bars {
@@ -657,6 +665,83 @@ dialog::backdrop {
 }
 
 .threshold-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Dialog Criticals Editor ── */
+
+.dialog-crit-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #aaa;
+  flex-wrap: wrap;
+}
+
+.crit-type-select {
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.crit-type-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.crit-sub-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crit-sub-inputs input[type="number"] {
+  width: 5ch;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 2px 6px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.crit-sub-inputs input[type="text"] {
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 2px 6px;
+  font-size: 12px;
+  width: 80px;
+}
+
+.crit-sub-inputs input[type="color"] {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #555;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+
+.crit-sub-inputs select {
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.crit-sub-inputs input:disabled,
+.crit-sub-inputs select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

@@ -258,6 +258,41 @@ class DiceRowElement extends HTMLElement {
       rangeWrapper.appendChild(rangeEl);
     }
 
+    // Crit swatches
+    const crit = this.config.criticals;
+    if (crit.type === 'natural' || crit.type === 'conditional-doubles') {
+      const hitEl = document.createElement('span');
+      hitEl.className = 'dice-range-item';
+      const hitSwatch = document.createElement('span');
+      hitSwatch.className = 'range-swatch range-swatch-crit';
+      hitEl.appendChild(hitSwatch);
+      const hitText = document.createElement('span');
+      hitText.textContent = 'Crit Hit';
+      hitEl.appendChild(hitText);
+      rangeWrapper.appendChild(hitEl);
+
+      const missEl = document.createElement('span');
+      missEl.className = 'dice-range-item';
+      const missSwatch = document.createElement('span');
+      missSwatch.className = 'range-swatch range-swatch-crit';
+      missEl.appendChild(missSwatch);
+      const missText = document.createElement('span');
+      missText.textContent = 'Crit Miss';
+      missEl.appendChild(missText);
+      rangeWrapper.appendChild(missEl);
+    } else if (crit.type === 'doubles') {
+      const doublesEl = document.createElement('span');
+      doublesEl.className = 'dice-range-item';
+      const doublesSwatch = document.createElement('span');
+      doublesSwatch.className = 'range-swatch';
+      doublesSwatch.style.backgroundColor = crit.color;
+      doublesEl.appendChild(doublesSwatch);
+      const doublesText = document.createElement('span');
+      doublesText.textContent = crit.label;
+      doublesEl.appendChild(doublesText);
+      rangeWrapper.appendChild(doublesEl);
+    }
+
     header.appendChild(rangeWrapper);
   }
 
@@ -442,6 +477,58 @@ class DiceRowElement extends HTMLElement {
 
     editorWrapper.appendChild(modContainer);
 
+    // Criticals editor
+    const critContainer = document.createElement('div');
+    critContainer.className = 'dialog-crit-inputs';
+
+    const critLabel = document.createElement('span');
+    critLabel.textContent = 'Criticals:';
+    critContainer.appendChild(critLabel);
+
+    const critSelect = document.createElement('select');
+    critSelect.className = 'crit-type-select';
+    critSelect.disabled = isBuiltin;
+
+    const critOptions: Array<{ value: string; text: string }> = [
+      { value: 'none', text: 'None' },
+      { value: 'natural', text: 'Natural Roll' },
+      { value: 'conditional-doubles', text: 'Conditional Doubles' },
+      { value: 'doubles', text: 'Doubles' },
+    ];
+    for (const opt of critOptions) {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.text;
+      if (opt.value === this.config.criticals.type) {
+        option.selected = true;
+      }
+      critSelect.appendChild(option);
+    }
+
+    const critSubInputs = document.createElement('div');
+    critSubInputs.className = 'crit-sub-inputs';
+
+    critSelect.addEventListener('change', () => {
+      const type = critSelect.value;
+      if (type === 'none') {
+        this.config.criticals = { type: 'none' };
+      } else if (type === 'natural') {
+        this.config.criticals = { type: 'natural', hit: this.config.count * this.config.sides, miss: this.config.count };
+      } else if (type === 'conditional-doubles') {
+        this.config.criticals = { type: 'conditional-doubles', hit: this.config.categories.length - 1, miss: 0 };
+      } else if (type === 'doubles') {
+        this.config.criticals = { type: 'doubles', color: '#ffaa00', label: 'Doubles' };
+      }
+      this._renderCritSubInputs(critSubInputs, isBuiltin);
+      this._onThresholdChange();
+    });
+
+    critContainer.appendChild(critSelect);
+    this._renderCritSubInputs(critSubInputs, isBuiltin);
+    critContainer.appendChild(critSubInputs);
+
+    editorWrapper.appendChild(critContainer);
+
     // Threshold editor
     const editor = document.createElement('div');
     editor.className = 'threshold-editor';
@@ -573,6 +660,127 @@ class DiceRowElement extends HTMLElement {
     if (this.onConfigChange) {
       this.onConfigChange(this.config, this.presetName);
     }
+  }
+
+  private _renderCritSubInputs(container: HTMLElement, disabled: boolean) {
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
+    const crit = this.config.criticals;
+
+    if (crit.type === 'natural') {
+      const hitLabel = document.createElement('span');
+      hitLabel.textContent = 'Hit:';
+      container.appendChild(hitLabel);
+
+      const hitInput = document.createElement('input');
+      hitInput.type = 'number';
+      hitInput.value = String(crit.hit);
+      hitInput.disabled = disabled;
+      hitInput.addEventListener('input', () => {
+        const val = parseInt(hitInput.value, 10);
+        if (!isNaN(val) && this.config.criticals.type === 'natural') {
+          this.config.criticals.hit = val;
+          this._onThresholdChange();
+        }
+      });
+      container.appendChild(hitInput);
+
+      const missLabel = document.createElement('span');
+      missLabel.textContent = 'Miss:';
+      container.appendChild(missLabel);
+
+      const missInput = document.createElement('input');
+      missInput.type = 'number';
+      missInput.value = String(crit.miss);
+      missInput.disabled = disabled;
+      missInput.addEventListener('input', () => {
+        const val = parseInt(missInput.value, 10);
+        if (!isNaN(val) && this.config.criticals.type === 'natural') {
+          this.config.criticals.miss = val;
+          this._onThresholdChange();
+        }
+      });
+      container.appendChild(missInput);
+    } else if (crit.type === 'conditional-doubles') {
+      const hitLabel = document.createElement('span');
+      hitLabel.textContent = 'Hit:';
+      container.appendChild(hitLabel);
+
+      const hitSelect = document.createElement('select');
+      hitSelect.disabled = disabled;
+      for (let i = 0; i < this.config.categories.length; i++) {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = this.config.categories[i].label;
+        if (i === crit.hit) opt.selected = true;
+        hitSelect.appendChild(opt);
+      }
+      hitSelect.addEventListener('change', () => {
+        const val = parseInt(hitSelect.value, 10);
+        if (!isNaN(val) && this.config.criticals.type === 'conditional-doubles') {
+          this.config.criticals.hit = val;
+          this._onThresholdChange();
+        }
+      });
+      container.appendChild(hitSelect);
+
+      const missLabel = document.createElement('span');
+      missLabel.textContent = 'Miss:';
+      container.appendChild(missLabel);
+
+      const missSelect = document.createElement('select');
+      missSelect.disabled = disabled;
+      for (let i = 0; i < this.config.categories.length; i++) {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = this.config.categories[i].label;
+        if (i === crit.miss) opt.selected = true;
+        missSelect.appendChild(opt);
+      }
+      missSelect.addEventListener('change', () => {
+        const val = parseInt(missSelect.value, 10);
+        if (!isNaN(val) && this.config.criticals.type === 'conditional-doubles') {
+          this.config.criticals.miss = val;
+          this._onThresholdChange();
+        }
+      });
+      container.appendChild(missSelect);
+    } else if (crit.type === 'doubles') {
+      const colorLabel = document.createElement('span');
+      colorLabel.textContent = 'Color:';
+      container.appendChild(colorLabel);
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.value = crit.color;
+      colorInput.disabled = disabled;
+      colorInput.addEventListener('input', () => {
+        if (this.config.criticals.type === 'doubles') {
+          this.config.criticals.color = colorInput.value;
+          this._onThresholdChange();
+        }
+      });
+      container.appendChild(colorInput);
+
+      const labelLabel = document.createElement('span');
+      labelLabel.textContent = 'Label:';
+      container.appendChild(labelLabel);
+
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.value = crit.label;
+      labelInput.disabled = disabled;
+      labelInput.addEventListener('input', () => {
+        if (this.config.criticals.type === 'doubles') {
+          this.config.criticals.label = labelInput.value;
+          this._onThresholdChange();
+        }
+      });
+      container.appendChild(labelInput);
+    }
+    // 'none' type: container stays empty
   }
 
   private _switchToBuiltinPreset(preset: ThresholdPreset) {

@@ -615,3 +615,297 @@ describe('stacked-bar', () => {
     }
   });
 });
+
+describe('header crit swatches', () => {
+  it('shows Crit Hit and Crit Miss swatches for natural crits', () => {
+    const cfg = deepConfig(config1d20, {
+      criticals: { type: 'natural', hit: 20, miss: 1 },
+    });
+    renderPage(container, [cfg], false, false);
+    const items = container.querySelectorAll('.dice-range-item');
+    const texts = Array.from(items).map(el => el.textContent);
+    expect(texts).toContain('Crit Hit');
+    expect(texts).toContain('Crit Miss');
+    const critSwatches = container.querySelectorAll('.range-swatch-crit');
+    expect(critSwatches.length).toBe(2);
+  });
+
+  it('shows Crit Hit and Crit Miss swatches for conditional-doubles crits', () => {
+    const cfg = deepConfig(config2d6, {
+      criticals: { type: 'conditional-doubles', hit: 2, miss: 0 },
+    });
+    renderPage(container, [cfg], false, false);
+    const items = container.querySelectorAll('.dice-range-item');
+    const texts = Array.from(items).map(el => el.textContent);
+    expect(texts).toContain('Crit Hit');
+    expect(texts).toContain('Crit Miss');
+  });
+
+  it('shows a solid swatch with configured color and label for doubles crits', () => {
+    const cfg = deepConfig(config2d6, {
+      criticals: { type: 'doubles', color: '#ffaa00', label: 'Doubles!' },
+    });
+    renderPage(container, [cfg], false, false);
+    const items = container.querySelectorAll('.dice-range-item');
+    const texts = Array.from(items).map(el => el.textContent);
+    expect(texts).toContain('Doubles!');
+    // Should not have hatched swatches
+    expect(container.querySelectorAll('.range-swatch-crit').length).toBe(0);
+  });
+
+  it('shows no crit swatches for type none', () => {
+    renderPage(container, [config2d6], false, false);
+    expect(container.querySelectorAll('.range-swatch-crit').length).toBe(0);
+    const items = container.querySelectorAll('.dice-range-item');
+    const texts = Array.from(items).map(el => el.textContent);
+    expect(texts).not.toContain('Crit Hit');
+    expect(texts).not.toContain('Crit Miss');
+  });
+});
+
+describe('dialog crit editor', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    for (const db of dbs) {
+      if (db.name) {
+        await new Promise<void>((resolve) => {
+          const req = indexedDB.deleteDatabase(db.name!);
+          req.onsuccess = () => resolve();
+          req.onblocked = () => resolve();
+        });
+      }
+    }
+  });
+
+  it('has .crit-type-select in the dialog', () => {
+    renderPage(container, [deepConfig(config2d6)], false, false);
+    const dialog = container.querySelector('dialog')!;
+    expect(dialog.querySelector('.crit-type-select')).toBeTruthy();
+  });
+
+  it('.crit-type-select is disabled for built-in presets', () => {
+    renderPage(container, [deepConfig(config2d6)], false, false);
+    const dialog = container.querySelector('dialog')!;
+    const select = dialog.querySelector('.crit-type-select') as HTMLSelectElement;
+    expect(select.disabled).toBe(true);
+  });
+
+  it('.crit-type-select is enabled for custom presets', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const select = row._dialog.querySelector('.crit-type-select') as HTMLSelectElement;
+    expect(select.disabled).toBe(false);
+  });
+
+  it('D&D preset shows natural selected', async () => {
+    const cfg = deepConfig(config1d20, {
+      criticals: { type: 'natural', hit: 20, miss: 1 },
+      presetName: 'D&D',
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Click D&D chip to switch to the built-in D&D preset
+    const chips = row._dialog.querySelectorAll('.preset-chip');
+    const dndChip = Array.from(chips).find((c: any) => c.textContent === 'D&D') as HTMLButtonElement;
+    dndChip.click();
+    const select = row._dialog.querySelector('.crit-type-select') as HTMLSelectElement;
+    expect(select.value).toBe('natural');
+  });
+
+  it('changing crit type to natural updates config', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const select = row._dialog.querySelector('.crit-type-select') as HTMLSelectElement;
+    select.value = 'natural';
+    select.dispatchEvent(new Event('change'));
+    expect(row.config.criticals.type).toBe('natural');
+    expect(row.config.criticals.hit).toBe(12); // 2d6: count*sides = 12
+    expect(row.config.criticals.miss).toBe(2); // 2d6: count = 2
+  });
+
+  it('changing crit type to doubles updates config', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const select = row._dialog.querySelector('.crit-type-select') as HTMLSelectElement;
+    select.value = 'doubles';
+    select.dispatchEvent(new Event('change'));
+    expect(row.config.criticals.type).toBe('doubles');
+    expect(row.config.criticals.color).toBe('#ffaa00');
+    expect(row.config.criticals.label).toBe('Doubles');
+  });
+
+  it('changing crit type to conditional-doubles updates config', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const select = row._dialog.querySelector('.crit-type-select') as HTMLSelectElement;
+    select.value = 'conditional-doubles';
+    select.dispatchEvent(new Event('change'));
+    expect(row.config.criticals.type).toBe('conditional-doubles');
+    expect(row.config.criticals.hit).toBe(2); // last category index
+    expect(row.config.criticals.miss).toBe(0);
+  });
+
+  it('changing crit type to none updates config', async () => {
+    const cfg = deepConfig(config1d20, {
+      criticals: { type: 'natural', hit: 20, miss: 1 },
+      minMod: 0, maxMod: 0,
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const select = row._dialog.querySelector('.crit-type-select') as HTMLSelectElement;
+    select.value = 'none';
+    select.dispatchEvent(new Event('change'));
+    expect(row.config.criticals.type).toBe('none');
+  });
+
+  it('natural sub-inputs update hit and miss values', async () => {
+    const cfg = deepConfig(config1d20, {
+      criticals: { type: 'natural', hit: 20, miss: 1 },
+      minMod: 0, maxMod: 0,
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const subInputs = row._dialog.querySelectorAll('.crit-sub-inputs input[type="number"]');
+    expect(subInputs.length).toBe(2);
+    const hitInput = subInputs[0] as HTMLInputElement;
+    hitInput.value = '19';
+    hitInput.dispatchEvent(new Event('input'));
+    expect(row.config.criticals.hit).toBe(19);
+    const missInput = subInputs[1] as HTMLInputElement;
+    missInput.value = '2';
+    missInput.dispatchEvent(new Event('input'));
+    expect(row.config.criticals.miss).toBe(2);
+  });
+
+  it('doubles sub-inputs update color and label', async () => {
+    const cfg = deepConfig(config2d6, {
+      criticals: { type: 'doubles', color: '#ffaa00', label: 'Doubles' },
+      minMod: 0, maxMod: 0,
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const colorInput = row._dialog.querySelector('.crit-sub-inputs input[type="color"]') as HTMLInputElement;
+    colorInput.value = '#ff0000';
+    colorInput.dispatchEvent(new Event('input'));
+    expect(row.config.criticals.color).toBe('#ff0000');
+    const textInput = row._dialog.querySelector('.crit-sub-inputs input[type="text"]') as HTMLInputElement;
+    textInput.value = 'Snake Eyes';
+    textInput.dispatchEvent(new Event('input'));
+    expect(row.config.criticals.label).toBe('Snake Eyes');
+  });
+
+  it('conditional-doubles sub-inputs update hit and miss category indices', async () => {
+    const cfg = deepConfig(config2d6, {
+      criticals: { type: 'conditional-doubles', hit: 2, miss: 0 },
+      minMod: 0, maxMod: 0,
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const selects = row._dialog.querySelectorAll('.crit-sub-inputs select');
+    expect(selects.length).toBe(2);
+    const hitSelect = selects[0] as HTMLSelectElement;
+    hitSelect.value = '1';
+    hitSelect.dispatchEvent(new Event('change'));
+    expect(row.config.criticals.hit).toBe(1);
+    const missSelect = selects[1] as HTMLSelectElement;
+    missSelect.value = '1';
+    missSelect.dispatchEvent(new Event('change'));
+    expect(row.config.criticals.miss).toBe(1);
+  });
+});
+
+describe('preset switching with criticals (Task 13)', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    for (const db of dbs) {
+      if (db.name) {
+        await new Promise<void>((resolve) => {
+          const req = indexedDB.deleteDatabase(db.name!);
+          req.onsuccess = () => resolve();
+          req.onblocked = () => resolve();
+        });
+      }
+    }
+  });
+
+  it('switching to D&D preset sets criticals to natural with hit=20 miss=1 on 1d20', async () => {
+    renderPage(container, [deepConfig(config1d20, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const chips = row._dialog.querySelectorAll('.preset-chip');
+    const dndChip = Array.from(chips).find((c: any) => c.textContent === 'D&D') as HTMLButtonElement;
+    dndChip.click();
+    expect(row.config.criticals).toEqual({ type: 'natural', hit: 20, miss: 1 });
+  });
+
+  it('switching to PbtA preset sets criticals to none', async () => {
+    const cfg = deepConfig(config1d20, {
+      criticals: { type: 'natural', hit: 20, miss: 1 },
+      minMod: 0, maxMod: 0,
+      presetName: 'D&D',
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const chips = row._dialog.querySelectorAll('.preset-chip');
+    const pbtaChip = Array.from(chips).find((c: any) => c.textContent === 'PbtA') as HTMLButtonElement;
+    pbtaChip.click();
+    expect(row.config.criticals).toEqual({ type: 'none' });
+  });
+
+  it('custom preset preserves criticals when switching to and from it', async () => {
+    const cfg = deepConfig(config2d6, {
+      criticals: { type: 'doubles', color: '#ff0000', label: 'Snake Eyes' },
+      minMod: 0, maxMod: 0,
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Create a custom preset (which copies current criticals)
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    // Switch to PbtA
+    const chips = row._dialog.querySelectorAll('.preset-chip');
+    const pbtaChip = Array.from(chips).find((c: any) => c.textContent === 'PbtA') as HTMLButtonElement;
+    pbtaChip.click();
+    expect(row.config.criticals.type).toBe('none');
+    // Switch back to custom
+    const selectBtn = row._dialog.querySelector('.preset-chip-select') as HTMLButtonElement;
+    selectBtn.click();
+    expect(row.config.criticals).toEqual({ type: 'doubles', color: '#ff0000', label: 'Snake Eyes' });
+  });
+});
