@@ -1,14 +1,29 @@
 export type RollMode = 'normal' | 'advantage' | 'disadvantage';
 
+export type CriticalConfig =
+  | { type: 'none' }
+  | { type: 'natural'; hit: number; miss: number }
+  | { type: 'conditional-doubles'; hit: number; miss: number }
+  | { type: 'doubles'; color: string; label: string };
+
+export interface ProbabilityResult {
+  categories: number[];
+  critHitPerCategory: number[];
+  critMissPerCategory: number[];
+}
+
 function classifyOutcomes(
   numDice: number,
   sides: number,
   thresholds: number[],
   modifier: number,
-  sumFn: (dice: number[]) => number
-): number[] {
+  sumFn: (dice: number[]) => number,
+  criticals: CriticalConfig = { type: 'none' }
+): ProbabilityResult {
   const numCategories = thresholds.length + 1;
   const counts = new Array<number>(numCategories).fill(0);
+  const critHitCounts = new Array<number>(numCategories).fill(0);
+  const critMissCounts = new Array<number>(numCategories).fill(0);
   let total = 0;
   const dice = new Array<number>(numDice);
 
@@ -33,7 +48,11 @@ function classifyOutcomes(
 
   recurse(0);
 
-  return counts.map(c => (c / total) * 100);
+  return {
+    categories: counts.map(c => (c / total) * 100),
+    critHitPerCategory: critHitCounts.map(c => (c / total) * 100),
+    critMissPerCategory: critMissCounts.map(c => (c / total) * 100),
+  };
 }
 
 function sumAll(dice: number[]): number {
@@ -63,33 +82,37 @@ function sumDropHighest(dice: number[]): number {
 }
 
 export function computeNormalProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number
-): number[] {
-  return classifyOutcomes(count, sides, thresholds, modifier, sumAll);
+  count: number, sides: number, thresholds: number[], modifier: number,
+  criticals: CriticalConfig = { type: 'none' }
+): ProbabilityResult {
+  return classifyOutcomes(count, sides, thresholds, modifier, sumAll, criticals);
 }
 
 export function computeAdvantageProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number
-): number[] {
-  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropLowest);
+  count: number, sides: number, thresholds: number[], modifier: number,
+  criticals: CriticalConfig = { type: 'none' }
+): ProbabilityResult {
+  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropLowest, criticals);
 }
 
 export function computeDisadvantageProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number
-): number[] {
-  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropHighest);
+  count: number, sides: number, thresholds: number[], modifier: number,
+  criticals: CriticalConfig = { type: 'none' }
+): ProbabilityResult {
+  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropHighest, criticals);
 }
 
 export function computeProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number, mode: RollMode
-): number[] {
+  count: number, sides: number, thresholds: number[], modifier: number, mode: RollMode,
+  criticals: CriticalConfig = { type: 'none' }
+): ProbabilityResult {
   switch (mode) {
     case 'normal':
-      return computeNormalProbabilities(count, sides, thresholds, modifier);
+      return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
     case 'advantage':
-      return computeAdvantageProbabilities(count, sides, thresholds, modifier);
+      return computeAdvantageProbabilities(count, sides, thresholds, modifier, criticals);
     case 'disadvantage':
-      return computeDisadvantageProbabilities(count, sides, thresholds, modifier);
+      return computeDisadvantageProbabilities(count, sides, thresholds, modifier, criticals);
   }
 }
 
