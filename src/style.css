@@ -422,6 +422,7 @@ stacked-bar .seg:last-child {
 .table-wrapper {
   overflow: auto;
   max-height: 400px;
+  border: 1px solid #2a2a3e;
 }
 
 .dice-table {
@@ -437,6 +438,14 @@ stacked-bar .seg:last-child {
   text-align: center;
   border-bottom: 1px solid #2a2a3e;
   border-right: 1px solid #2a2a3e;
+}
+
+.dice-table tr > :last-child {
+  border-right: none;
+}
+
+.dice-table tbody tr:last-child > * {
+  border-bottom: none;
 }
 
 .dice-table thead {
