@@ -420,7 +420,7 @@ stacked-bar .seg:last-child {
 /* ── Table View ── */
 
 .table-wrapper {
-  overflow: auto clip;
+  overflow: auto;
   max-height: 400px;
 }
 
