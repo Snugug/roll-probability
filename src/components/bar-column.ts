@@ -45,8 +45,7 @@ export class BarColumn extends HTMLElement {
 
     for (const { mode, show } of modes) {
       if (!show) continue;
-      const result = this.modeResults[mode];
-      if (!result) continue;
+      const result = this.modeResults[mode]!;
       const bar = document.createElement('stacked-bar') as StackedBar;
       bar.segments = result.segments;
       bar.critHitPerCategory = result.critHitPerCategory;

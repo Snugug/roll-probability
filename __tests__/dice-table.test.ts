@@ -161,6 +161,38 @@ describe('DiceTableElement — conditional-doubles crits', () => {
   });
 });
 
+describe('DiceTableElement — conditional-doubles out-of-bounds indices', () => {
+  const oobMissCfg: DiceConfig = {
+    ...config2d6,
+    criticals: { type: 'conditional-doubles', hit: 2, miss: 5 },
+  };
+
+  const oobHitCfg: DiceConfig = {
+    ...config2d6,
+    criticals: { type: 'conditional-doubles', hit: 5, miss: 0 },
+  };
+
+  it('prepends Crit Miss when miss index is out of bounds', () => {
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = computeViewData(oobMissCfg, false, false);
+    table.update(data, oobMissCfg, false, false);
+    const headerRow = table.querySelector('thead tr')!;
+    const ths = headerRow.querySelectorAll('th');
+    expect(ths[1].textContent).toContain('Crit Miss');
+  });
+
+  it('appends Crit Hit when hit index is out of bounds', () => {
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = computeViewData(oobHitCfg, false, false);
+    table.update(data, oobHitCfg, false, false);
+    const headerRow = table.querySelector('thead tr')!;
+    const ths = headerRow.querySelectorAll('th');
+    expect(ths[ths.length - 1].textContent).toContain('Crit Hit');
+  });
+});
+
 describe('DiceTableElement — doubles crits', () => {
   const doublesCfg: DiceConfig = {
     ...config2d6,
