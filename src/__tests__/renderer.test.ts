@@ -617,7 +617,7 @@ describe('stacked-bar', () => {
 });
 
 describe('header crit swatches', () => {
-  it('shows Crit Hit and Crit Miss swatches for natural crits', () => {
+  it('shows Crit Hit and Crit Miss swatches for natural crits, miss first and hit last', () => {
     const cfg = deepConfig(config1d20, {
       criticals: { type: 'natural', hit: 20, miss: 1 },
     });
@@ -626,19 +626,31 @@ describe('header crit swatches', () => {
     const texts = Array.from(items).map(el => el.textContent);
     expect(texts).toContain('Crit Hit');
     expect(texts).toContain('Crit Miss');
-    const critSwatches = container.querySelectorAll('.range-swatch-crit');
-    expect(critSwatches.length).toBe(2);
+    // Natural: miss goes first, hit goes last
+    expect(texts[0]).toBe('Crit Miss');
+    expect(texts[texts.length - 1]).toBe('Crit Hit');
+    // Hatching classes
+    expect(container.querySelectorAll('.range-swatch-crit-hit').length).toBe(1);
+    expect(container.querySelectorAll('.range-swatch-crit-miss').length).toBe(1);
   });
 
-  it('shows Crit Hit and Crit Miss swatches for conditional-doubles crits', () => {
+  it('shows conditional-doubles crit swatches adjacent to their categories', () => {
+    // config2d6 categories: Miss(0), Weak Hit(1), Strong Hit(2)
+    // hit=2 (Strong Hit), miss=0 (Miss)
     const cfg = deepConfig(config2d6, {
       criticals: { type: 'conditional-doubles', hit: 2, miss: 0 },
     });
     renderPage(container, [cfg], false, false);
     const items = container.querySelectorAll('.dice-range-item');
     const texts = Array.from(items).map(el => el.textContent);
-    expect(texts).toContain('Crit Hit');
-    expect(texts).toContain('Crit Miss');
+    // Expected order: Crit Miss, Miss ≤6, Weak Hit 7–9, Strong Hit 10+, Crit Hit
+    expect(texts[0]).toBe('Crit Miss');
+    expect(texts[texts.length - 1]).toBe('Crit Hit');
+    // Swatches should have category background colors
+    const hitSwatch = items[texts.length - 1].querySelector('.range-swatch-crit-hit') as HTMLElement;
+    const missSwatch = items[0].querySelector('.range-swatch-crit-miss') as HTMLElement;
+    expect(hitSwatch.style.backgroundColor).toBe(cfg.categories[2].color);
+    expect(missSwatch.style.backgroundColor).toBe(cfg.categories[0].color);
   });
 
   it('shows a solid swatch with configured color and label for doubles crits', () => {
@@ -649,13 +661,14 @@ describe('header crit swatches', () => {
     const items = container.querySelectorAll('.dice-range-item');
     const texts = Array.from(items).map(el => el.textContent);
     expect(texts).toContain('Doubles!');
-    // Should not have hatched swatches
-    expect(container.querySelectorAll('.range-swatch-crit').length).toBe(0);
+    expect(container.querySelectorAll('.range-swatch-crit-hit').length).toBe(0);
+    expect(container.querySelectorAll('.range-swatch-crit-miss').length).toBe(0);
   });
 
   it('shows no crit swatches for type none', () => {
     renderPage(container, [config2d6], false, false);
-    expect(container.querySelectorAll('.range-swatch-crit').length).toBe(0);
+    expect(container.querySelectorAll('.range-swatch-crit-hit').length).toBe(0);
+    expect(container.querySelectorAll('.range-swatch-crit-miss').length).toBe(0);
     const items = container.querySelectorAll('.dice-range-item');
     const texts = Array.from(items).map(el => el.textContent);
     expect(texts).not.toContain('Crit Hit');

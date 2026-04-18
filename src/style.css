@@ -237,8 +237,14 @@ dice-row {
   flex-shrink: 0;
 }
 
-.range-swatch-crit {
-  background-color: #888;
+.range-swatch-crit-hit {
+  background-image: repeating-linear-gradient(
+    135deg, transparent, transparent 1.5px,
+    rgba(255, 255, 255, 0.6) 1.5px, rgba(255, 255, 255, 0.6) 3px
+  );
+}
+
+.range-swatch-crit-miss {
   background-image: repeating-linear-gradient(
     45deg, transparent, transparent 1.5px,
     rgba(255, 255, 255, 0.6) 1.5px, rgba(255, 255, 255, 0.6) 3px
@@ -317,7 +323,17 @@ stacked-bar .seg:last-child {
   position: relative;
 }
 
-.seg-crit {
+.seg-crit-hit {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.55) 2px,
+    rgba(255, 255, 255, 0.55) 4px
+  );
+}
+
+.seg-crit-miss {
   background-image: repeating-linear-gradient(
     45deg,
     transparent,

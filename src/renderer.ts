@@ -32,10 +32,10 @@ class StackedBar extends HTMLElement {
     }
   }
 
-  private _renderSegment(percent: number, color: string, tooltip: string, isCrit: boolean): void {
+  private _renderSegment(percent: number, color: string, tooltip: string, critClass: string = ''): void {
     if (percent <= 0) return;
     const el = document.createElement('div');
-    el.className = isCrit ? 'seg seg-crit' : 'seg';
+    el.className = critClass ? 'seg ' + critClass : 'seg';
     el.style.backgroundColor = color;
     el.style.flex = String(percent);
     if (percent >= 5) {
@@ -53,9 +53,9 @@ class StackedBar extends HTMLElement {
       const critHit = this.critHitPerCategory[i] ?? 0;
       const critMiss = this.critMissPerCategory[i] ?? 0;
       const remainder = seg.percent - critHit - critMiss;
-      this._renderSegment(critHit, seg.color, 'Crit Hit', true);
-      this._renderSegment(remainder, seg.color, seg.label, false);
-      this._renderSegment(critMiss, seg.color, 'Crit Miss', true);
+      this._renderSegment(critHit, seg.color, 'Crit Hit', 'seg-crit-hit');
+      this._renderSegment(remainder, seg.color, seg.label);
+      this._renderSegment(critMiss, seg.color, 'Crit Miss', 'seg-crit-miss');
     }
   }
 
@@ -226,12 +226,32 @@ class DiceRowElement extends HTMLElement {
   }
 
   private _renderRangeItems(header: HTMLElement) {
-    const { thresholds, categories } = this.config;
+    const { thresholds, categories, criticals } = this.config;
 
     const rangeWrapper = document.createElement('div');
     rangeWrapper.className = 'dice-ranges';
 
+    // Determine crit miss/hit category indices for positioning
+    // conditional-doubles: hit/miss are category indices
+    // natural: not tied to specific categories → miss first, hit last
+    // doubles: single swatch at end
+    const hasCritSwatches = criticals.type === 'natural' || criticals.type === 'conditional-doubles';
+    const missBeforeCat = criticals.type === 'conditional-doubles' ? criticals.miss : -1;
+    const hitAfterCat = criticals.type === 'conditional-doubles' ? criticals.hit : -1;
+    const missCatColor = criticals.type === 'conditional-doubles' ? categories[criticals.miss]?.color ?? '#888' : '#888';
+    const hitCatColor = criticals.type === 'conditional-doubles' ? categories[criticals.hit]?.color ?? '#888' : '#888';
+
+    // For natural crits (not tied to specific thresholds), crit miss goes first
+    if (hasCritSwatches && criticals.type === 'natural') {
+      rangeWrapper.appendChild(this._makeCritRangeItem('Crit Miss', missCatColor, 'range-swatch-crit-miss'));
+    }
+
     for (let i = 0; i < categories.length; i++) {
+      // Insert crit miss BEFORE its associated category
+      if (hasCritSwatches && i === missBeforeCat) {
+        rangeWrapper.appendChild(this._makeCritRangeItem('Crit Miss', missCatColor, 'range-swatch-crit-miss'));
+      }
+
       const cat = categories[i];
       let rangeText: string;
       if (i === 0) {
@@ -254,47 +274,47 @@ class DiceRowElement extends HTMLElement {
       text.textContent = cat.label + ' ' + rangeText;
       rangeEl.appendChild(text);
 
-
-
       rangeWrapper.appendChild(rangeEl);
+
+      // Insert crit hit AFTER its associated category
+      if (hasCritSwatches && i === hitAfterCat) {
+        rangeWrapper.appendChild(this._makeCritRangeItem('Crit Hit', hitCatColor, 'range-swatch-crit-hit'));
+      }
     }
 
-    // Crit swatches
-    const crit = this.config.criticals;
-    if (crit.type === 'natural' || crit.type === 'conditional-doubles') {
-      const hitEl = document.createElement('span');
-      hitEl.className = 'dice-range-item';
-      const hitSwatch = document.createElement('span');
-      hitSwatch.className = 'range-swatch range-swatch-crit';
-      hitEl.appendChild(hitSwatch);
-      const hitText = document.createElement('span');
-      hitText.textContent = 'Crit Hit';
-      hitEl.appendChild(hitText);
-      rangeWrapper.appendChild(hitEl);
+    // For natural crits (not tied to specific thresholds), crit hit goes last
+    if (hasCritSwatches && criticals.type === 'natural') {
+      rangeWrapper.appendChild(this._makeCritRangeItem('Crit Hit', hitCatColor, 'range-swatch-crit-hit'));
+    }
 
-      const missEl = document.createElement('span');
-      missEl.className = 'dice-range-item';
-      const missSwatch = document.createElement('span');
-      missSwatch.className = 'range-swatch range-swatch-crit';
-      missEl.appendChild(missSwatch);
-      const missText = document.createElement('span');
-      missText.textContent = 'Crit Miss';
-      missEl.appendChild(missText);
-      rangeWrapper.appendChild(missEl);
-    } else if (crit.type === 'doubles') {
+    // Unconditional doubles: single swatch at end
+    if (criticals.type === 'doubles') {
       const doublesEl = document.createElement('span');
       doublesEl.className = 'dice-range-item';
       const doublesSwatch = document.createElement('span');
       doublesSwatch.className = 'range-swatch';
-      doublesSwatch.style.backgroundColor = crit.color;
+      doublesSwatch.style.backgroundColor = criticals.color;
       doublesEl.appendChild(doublesSwatch);
       const doublesText = document.createElement('span');
-      doublesText.textContent = crit.label;
+      doublesText.textContent = criticals.label;
       doublesEl.appendChild(doublesText);
       rangeWrapper.appendChild(doublesEl);
     }
 
     header.appendChild(rangeWrapper);
+  }
+
+  private _makeCritRangeItem(label: string, bgColor: string, swatchClass: string): HTMLSpanElement {
+    const el = document.createElement('span');
+    el.className = 'dice-range-item';
+    const swatch = document.createElement('span');
+    swatch.className = 'range-swatch ' + swatchClass;
+    swatch.style.backgroundColor = bgColor;
+    el.appendChild(swatch);
+    const text = document.createElement('span');
+    text.textContent = label;
+    el.appendChild(text);
+    return el;
   }
 
   private _isBuiltinPreset(): boolean {
