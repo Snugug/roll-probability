@@ -486,11 +486,11 @@ stacked-bar .seg:last-child {
 }
 
 .dice-table tbody tr:nth-child(even) td {
-  background: #15152a;
+  background: #1a1a30;
 }
 
 .dice-table tbody tr:nth-child(even) th {
-  background: #1d1d34;
+  background: #22223c;
 }
 
 
