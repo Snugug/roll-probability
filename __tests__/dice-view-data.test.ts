@@ -72,6 +72,58 @@ describe('computeViewData', () => {
   });
 });
 
+import { BarChartView } from '../src/components/bar-chart-view';
+
+const config2d6ForView: DiceConfig = {
+  count: 2, sides: 6, label: '2d6',
+  thresholds: [7, 10],
+  categories: [
+    { label: 'Miss', color: '#f87171' },
+    { label: 'Weak Hit', color: '#facc15' },
+    { label: 'Strong Hit', color: '#4ade80' },
+  ],
+  criticals: { type: 'none' },
+  minMod: 0, maxMod: 1,
+};
+
+describe('BarChartView', () => {
+  let container: HTMLElement;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    container.remove();
+  });
+
+  it('creates bar-column elements for each modifier', () => {
+    const view = document.createElement('bar-chart-view') as BarChartView;
+    container.appendChild(view);
+    const data = computeViewData(config2d6ForView, false, false);
+    view.update(data, config2d6ForView, false, false);
+    expect(view.querySelectorAll('bar-column').length).toBe(2);
+  });
+
+  it('replaces content on subsequent update calls', () => {
+    const view = document.createElement('bar-chart-view') as BarChartView;
+    container.appendChild(view);
+    const data = computeViewData(config2d6ForView, false, false);
+    view.update(data, config2d6ForView, false, false);
+    view.update(data, config2d6ForView, false, false);
+    expect(view.querySelectorAll('bar-column').length).toBe(2);
+  });
+
+  it('has .bars class on the container', () => {
+    const view = document.createElement('bar-chart-view') as BarChartView;
+    container.appendChild(view);
+    const data = computeViewData(config2d6ForView, false, false);
+    view.update(data, config2d6ForView, false, false);
+    expect(view.querySelector('.bars')).toBeTruthy();
+  });
+});
+
 describe('BarColumn with pre-computed data', () => {
   let container: HTMLElement;
 

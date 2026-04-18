@@ -1,10 +1,12 @@
 import type { DiceConfig } from './thresholds';
 import { StackedBar } from './components/stacked-bar';
 import { BarColumn } from './components/bar-column';
+import { BarChartView } from './components/bar-chart-view';
 import { DiceRowElement } from './components/dice-row';
 
 if (!customElements.get('stacked-bar')) customElements.define('stacked-bar', StackedBar);
 if (!customElements.get('bar-column')) customElements.define('bar-column', BarColumn);
+if (!customElements.get('bar-chart-view')) customElements.define('bar-chart-view', BarChartView);
 if (!customElements.get('dice-row')) customElements.define('dice-row', DiceRowElement);
 
 export function renderPage(
