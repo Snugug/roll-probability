@@ -437,6 +437,12 @@ stacked-bar .seg:last-child {
   border: 1px solid #2a2a3e;
 }
 
+.dice-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
 .dice-table thead th {
   background: #1a1a2e;
   color: #ccc;
@@ -444,9 +450,6 @@ stacked-bar .seg:last-child {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  position: sticky;
-  top: 0;
-  z-index: 2;
   white-space: nowrap;
 }
 
