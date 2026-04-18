@@ -1,0 +1,71 @@
+import { describe, it, expect } from 'vitest';
+import { computeViewData } from '../src/components/dice-view-data';
+import type { DiceConfig } from '../src/thresholds';
+
+const config2d6: DiceConfig = {
+  count: 2, sides: 6, label: '2d6',
+  thresholds: [7, 10],
+  categories: [
+    { label: 'Miss', color: '#f87171' },
+    { label: 'Weak Hit', color: '#facc15' },
+    { label: 'Strong Hit', color: '#4ade80' },
+  ],
+  criticals: { type: 'none' },
+  minMod: 0, maxMod: 2,
+};
+
+describe('computeViewData', () => {
+  it('returns one ModifierData per modifier in range', () => {
+    const data = computeViewData(config2d6, false, false);
+    expect(data.length).toBe(3);
+    expect(data[0].modifier).toBe(0);
+    expect(data[1].modifier).toBe(1);
+    expect(data[2].modifier).toBe(2);
+  });
+
+  it('includes only normal mode when adv/dis are off', () => {
+    const data = computeViewData(config2d6, false, false);
+    expect(data[0].results.normal).toBeDefined();
+    expect(data[0].results.advantage).toBeUndefined();
+    expect(data[0].results.disadvantage).toBeUndefined();
+  });
+
+  it('includes all three modes when adv and dis are on', () => {
+    const data = computeViewData(config2d6, true, true);
+    expect(data[0].results.normal).toBeDefined();
+    expect(data[0].results.advantage).toBeDefined();
+    expect(data[0].results.disadvantage).toBeDefined();
+  });
+
+  it('includes advantage only when showAdvantage is true', () => {
+    const data = computeViewData(config2d6, true, false);
+    expect(data[0].results.advantage).toBeDefined();
+    expect(data[0].results.disadvantage).toBeUndefined();
+  });
+
+  it('segments match category count', () => {
+    const data = computeViewData(config2d6, false, false);
+    expect(data[0].results.normal!.segments.length).toBe(3);
+  });
+
+  it('segments have correct labels and colors from config', () => {
+    const data = computeViewData(config2d6, false, false);
+    const segs = data[0].results.normal!.segments;
+    expect(segs[0].label).toBe('Miss');
+    expect(segs[0].color).toBe('#f87171');
+    expect(segs[2].label).toBe('Strong Hit');
+    expect(segs[2].color).toBe('#4ade80');
+  });
+
+  it('segment percentages sum to approximately 100', () => {
+    const data = computeViewData(config2d6, false, false);
+    const sum = data[0].results.normal!.segments.reduce((s, seg) => s + seg.percent, 0);
+    expect(sum).toBeCloseTo(100, 0);
+  });
+
+  it('includes critHitPerCategory and critMissPerCategory arrays', () => {
+    const data = computeViewData(config2d6, false, false);
+    expect(data[0].results.normal!.critHitPerCategory).toBeDefined();
+    expect(data[0].results.normal!.critMissPerCategory).toBeDefined();
+  });
+});
