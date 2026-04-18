@@ -698,6 +698,7 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 24px;
 }
 
 .crit-sub-inputs input[type="number"] {
@@ -722,9 +723,9 @@ dialog::backdrop {
 }
 
 .crit-sub-inputs input[type="color"] {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #555;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #555;
   border-radius: 4px;
   padding: 0;
   cursor: pointer;
