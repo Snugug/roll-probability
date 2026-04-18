@@ -744,7 +744,7 @@ describe('dialog crit editor', () => {
     select.dispatchEvent(new Event('change'));
     expect(row.config.criticals.type).toBe('doubles');
     expect(row.config.criticals.color).toBe('#ffaa00');
-    expect(row.config.criticals.label).toBe('Doubles');
+    expect(row.config.criticals.label).toBe('Critical');
   });
 
   it('changing crit type to conditional-doubles updates config', async () => {

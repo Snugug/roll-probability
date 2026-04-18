@@ -165,6 +165,7 @@ class DiceRowElement extends HTMLElement {
 
   private _dialog!: HTMLDialogElement;
   private _floorLabel: HTMLSpanElement | null = null;
+  private _critSubInputs: HTMLElement | null = null;
   private _customPresets: SavedCustomPreset[] = [];
 
   connectedCallback() {
@@ -505,8 +506,8 @@ class DiceRowElement extends HTMLElement {
       critSelect.appendChild(option);
     }
 
-    const critSubInputs = document.createElement('div');
-    critSubInputs.className = 'crit-sub-inputs';
+    this._critSubInputs = document.createElement('div');
+    this._critSubInputs.className = 'crit-sub-inputs';
 
     critSelect.addEventListener('change', () => {
       const type = critSelect.value;
@@ -517,15 +518,15 @@ class DiceRowElement extends HTMLElement {
       } else if (type === 'conditional-doubles') {
         this.config.criticals = { type: 'conditional-doubles', hit: this.config.categories.length - 1, miss: 0 };
       } else if (type === 'doubles') {
-        this.config.criticals = { type: 'doubles', color: '#ffaa00', label: 'Doubles' };
+        this.config.criticals = { type: 'doubles', color: '#ffaa00', label: 'Critical' };
       }
-      this._renderCritSubInputs(critSubInputs, isBuiltin);
+      this._renderCritSubInputs(this._critSubInputs!, isBuiltin);
       this._onThresholdChange();
     });
 
     critContainer.appendChild(critSelect);
-    this._renderCritSubInputs(critSubInputs, isBuiltin);
-    critContainer.appendChild(critSubInputs);
+    this._renderCritSubInputs(this._critSubInputs, isBuiltin);
+    critContainer.appendChild(this._critSubInputs);
 
     editorWrapper.appendChild(critContainer);
 
@@ -648,6 +649,23 @@ class DiceRowElement extends HTMLElement {
     // Update floor label to reflect current lowest threshold
     if (this._floorLabel && this.config.thresholds.length > 0) {
       this._floorLabel.textContent = '\u2264' + (this.config.thresholds[0] - 1);
+    }
+
+    // Refresh crit sub-inputs so conditional-doubles dropdowns reflect current categories
+    if (this._critSubInputs) {
+      const isBuiltin = this._isBuiltinPreset();
+      this._renderCritSubInputs(this._critSubInputs, isBuiltin);
+    }
+
+    // Update the in-memory custom preset so switching away and back preserves changes
+    if (!this._isBuiltinPreset()) {
+      const custom = this._customPresets.find(p => p.name === this.presetName);
+      if (custom) {
+        custom.thresholds = [...this.config.thresholds];
+        custom.categories = this.config.categories.map(c => ({ ...c }));
+        custom.criticals = this.config.criticals;
+        saveCustomPreset(custom).catch(() => {});
+      }
     }
 
     // Update preview
