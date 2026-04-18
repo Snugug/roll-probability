@@ -425,7 +425,8 @@ stacked-bar .seg:last-child {
 }
 
 .dice-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
   font-size: 12px;
 }
@@ -434,7 +435,8 @@ stacked-bar .seg:last-child {
 .dice-table td {
   padding: 4px 8px;
   text-align: center;
-  border: 1px solid #2a2a3e;
+  border-bottom: 1px solid #2a2a3e;
+  border-right: 1px solid #2a2a3e;
 }
 
 .dice-table thead {
