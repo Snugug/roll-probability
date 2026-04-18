@@ -309,6 +309,16 @@ stacked-bar .seg:last-child {
   position: relative;
 }
 
+.seg-crit {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.55) 2px,
+    rgba(255, 255, 255, 0.55) 4px
+  );
+}
+
 .seg span {
   font-size: 8px;
   font-weight: 700;

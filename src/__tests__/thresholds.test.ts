@@ -3,6 +3,7 @@ import {
   PBTA_PRESET,
   DND_PRESET,
   mapThresholds,
+  mapCriticals,
   type ThresholdPreset,
   loadSettings,
   saveSettings,
@@ -64,7 +65,7 @@ describe('mapThresholds', () => {
   });
 
   it('returns thresholds unchanged when referenceDie is invalid', () => {
-    const preset = { name: 'Bad', referenceDie: 'invalid', thresholds: [5, 10], categories: [] };
+    const preset: ThresholdPreset = { name: 'Bad', referenceDie: 'invalid', thresholds: [5, 10], categories: [], criticals: { type: 'none' } };
     const result = mapThresholds(preset, 2, 6);
     expect(result).toEqual([5, 10]);
   });
@@ -105,6 +106,56 @@ describe('mapThresholds', () => {
     for (let i = 1; i < result.length; i++) {
       expect(result[i]).toBeGreaterThan(result[i - 1]);
     }
+  });
+});
+
+describe('built-in preset criticals', () => {
+  it('PbtA preset has criticals type none', () => {
+    expect(PBTA_PRESET.criticals).toEqual({ type: 'none' });
+  });
+
+  it('D&D preset has natural criticals with hit=20 miss=1', () => {
+    expect(DND_PRESET.criticals).toEqual({ type: 'natural', hit: 20, miss: 1 });
+  });
+});
+
+describe('mapCriticals', () => {
+  it('maps D&D natural crits from 1d20 to 2d10 (hit=20→20, miss=1→2)', () => {
+    // ref 1d20: min=1, max=20, range=19
+    // target 2d10: min=2, max=20, range=18
+    // hit: 2 + round((20-1)/19 * 18) = 2 + round(18) = 20
+    // miss: 2 + round((1-1)/19 * 18) = 2 + round(0) = 2
+    const result = mapCriticals(DND_PRESET, 2, 10);
+    expect(result).toEqual({ type: 'natural', hit: 20, miss: 2 });
+  });
+
+  it('maps D&D natural crits to itself (identity)', () => {
+    const result = mapCriticals(DND_PRESET, 1, 20);
+    expect(result).toEqual({ type: 'natural', hit: 20, miss: 1 });
+  });
+
+  it('returns non-natural configs unchanged', () => {
+    const preset: ThresholdPreset = {
+      name: 'Test',
+      referenceDie: '2d6',
+      thresholds: [7, 10],
+      categories: [],
+      criticals: { type: 'none' },
+    };
+    const result = mapCriticals(preset, 1, 20);
+    expect(result).toEqual({ type: 'none' });
+  });
+
+  it('returns criticals unchanged when referenceDie is invalid', () => {
+    const preset: ThresholdPreset = {
+      name: 'Bad',
+      referenceDie: 'invalid',
+      thresholds: [5],
+      categories: [],
+      criticals: { type: 'natural', hit: 20, miss: 1 },
+    };
+    const result = mapCriticals(preset, 2, 6);
+    expect(result).toEqual({ type: 'natural', hit: 20, miss: 1 });
   });
 });
 
@@ -158,6 +209,41 @@ describe('IndexedDB persistence', () => {
     await saveDiceThresholds('2d6', config);
     const loaded = await loadDiceThresholds('2d6');
     expect(loaded).toEqual(config);
+  });
+
+  it('saveDiceThresholds round-trips with criticals field', async () => {
+    const config: SavedDiceThreshold = {
+      presetName: 'D&D',
+      categories: [
+        { label: 'Fail', color: '#ff0000' },
+        { label: 'Pass', color: '#00ff00' },
+      ],
+      thresholds: [10],
+      criticals: { type: 'natural', hit: 20, miss: 1 },
+      minMod: -2,
+      maxMod: 5,
+    };
+    await saveDiceThresholds('1d20', config);
+    const loaded = await loadDiceThresholds('1d20');
+    expect(loaded).toEqual(config);
+    expect(loaded!.criticals).toEqual({ type: 'natural', hit: 20, miss: 1 });
+  });
+
+  it('saveCustomPreset round-trips with criticals field', async () => {
+    const preset: SavedCustomPreset = {
+      name: 'Crit Preset',
+      referenceDie: '1d20',
+      thresholds: [10],
+      categories: [
+        { label: 'Fail', color: '#ff0000' },
+        { label: 'Pass', color: '#00ff00' },
+      ],
+      criticals: { type: 'natural', hit: 20, miss: 1 },
+    };
+    await saveCustomPreset(preset);
+    const all = await loadCustomPresets();
+    expect(all).toHaveLength(1);
+    expect(all[0].criticals).toEqual({ type: 'natural', hit: 20, miss: 1 });
   });
 
   it('loadDiceThresholds returns null for unknown label', async () => {

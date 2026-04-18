@@ -11,6 +11,7 @@ const config2d6: DiceConfig = {
     { label: 'Weak Hit', color: '#facc15' },
     { label: 'Strong Hit', color: '#4ade80' },
   ],
+  criticals: { type: 'none' },
   minMod: -2,
   maxMod: 5,
 };
@@ -27,6 +28,7 @@ const config1d20: DiceConfig = {
     { label: 'Very Hard', color: '#ef4444' },
     { label: 'Nearly Impossible', color: '#a855f7' },
   ],
+  criticals: { type: 'none' },
   minMod: -2,
   maxMod: 5,
 };
@@ -289,6 +291,7 @@ describe('dialog interactivity', () => {
         { label: 'Low', color: '#ff0000' },
         { label: 'High', color: '#00ff00' },
       ],
+      criticals: { type: 'none' },
       minMod: 0, maxMod: 0,
     };
     renderPage(container, [twoCategory], false, false);

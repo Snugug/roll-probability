@@ -21,6 +21,7 @@ function buildConfig(label: string): DiceConfig {
     label,
     thresholds,
     categories: PBTA_PRESET.categories,
+    criticals: PBTA_PRESET.criticals,
     minMod: -2,
     maxMod: 5,
   };
@@ -38,6 +39,7 @@ async function buildConfigWithSaved(label: string): Promise<DiceConfig | null> {
       label,
       thresholds: saved.thresholds,
       categories: saved.categories,
+      criticals: saved.criticals ?? { type: 'none' },
       presetName: saved.presetName,
       minMod: saved.minMod ?? -2,
       maxMod: saved.maxMod ?? 5,
@@ -109,6 +111,7 @@ export async function init(): Promise<void> {
       presetName,
       categories: config.categories,
       thresholds: config.thresholds,
+      criticals: config.criticals,
       minMod: config.minMod,
       maxMod: config.maxMod,
     }).catch(() => {});

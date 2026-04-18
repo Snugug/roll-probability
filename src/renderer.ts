@@ -1,7 +1,8 @@
-import { computeProbabilities, type RollMode } from './engine';
+import { computeProbabilities, type RollMode, type CriticalConfig } from './engine';
 import {
   BUILTIN_PRESETS,
   mapThresholds,
+  mapCriticals,
   saveCustomPreset,
   deleteCustomPreset,
   loadCustomPresets,
@@ -19,26 +20,54 @@ interface SegmentData {
 
 class StackedBar extends HTMLElement {
   segments!: SegmentData[];
+  critHitPerCategory: number[] = [];
+  critMissPerCategory: number[] = [];
+  critConfig: CriticalConfig = { type: 'none' };
 
   connectedCallback() {
-    // Render from last category to first (highest at top, floor at bottom)
+    if (this.critConfig.type === 'doubles') {
+      this._renderPooled();
+    } else {
+      this._renderSubdivided();
+    }
+  }
+
+  private _renderSegment(percent: number, color: string, tooltip: string, isCrit: boolean): void {
+    if (percent <= 0) return;
+    const el = document.createElement('div');
+    el.className = isCrit ? 'seg seg-crit' : 'seg';
+    el.style.backgroundColor = color;
+    el.style.flex = String(percent);
+    if (percent >= 5) {
+      const span = document.createElement('span');
+      span.textContent = Math.round(percent) + '%';
+      el.appendChild(span);
+    }
+    el.dataset.tooltip = tooltip + ': ' + percent.toFixed(2) + '%';
+    this.appendChild(el);
+  }
+
+  private _renderSubdivided(): void {
     for (let i = this.segments.length - 1; i >= 0; i--) {
       const seg = this.segments[i];
-      if (seg.percent === 0) continue;
+      const critHit = this.critHitPerCategory[i] ?? 0;
+      const critMiss = this.critMissPerCategory[i] ?? 0;
+      const remainder = seg.percent - critHit - critMiss;
+      this._renderSegment(critHit, seg.color, 'Crit Hit', true);
+      this._renderSegment(remainder, seg.color, seg.label, false);
+      this._renderSegment(critMiss, seg.color, 'Crit Miss', true);
+    }
+  }
 
-      const el = document.createElement('div');
-      el.className = 'seg';
-      el.style.backgroundColor = seg.color;
-      el.style.flex = String(seg.percent);
-
-      if (seg.percent >= 5) {
-        const span = document.createElement('span');
-        span.textContent = Math.round(seg.percent) + '%';
-        el.appendChild(span);
-      }
-
-      el.dataset.tooltip = seg.label + ': ' + seg.percent.toFixed(2) + '%';
-      this.appendChild(el);
+  private _renderPooled(): void {
+    const pooledTotal = this.critHitPerCategory.reduce((a, b) => a + b, 0);
+    const config = this.critConfig as { type: 'doubles'; color: string; label: string };
+    this._renderSegment(pooledTotal, config.color, config.label, false);
+    for (let i = this.segments.length - 1; i >= 0; i--) {
+      const seg = this.segments[i];
+      const critAmount = this.critHitPerCategory[i] ?? 0;
+      const remainder = seg.percent - critAmount;
+      this._renderSegment(remainder, seg.color, seg.label, false);
     }
   }
 }
@@ -85,16 +114,20 @@ class BarColumn extends HTMLElement {
 
     for (const { mode, show } of modes) {
       if (!show) continue;
-      const probabilities = computeProbabilities(
-        this.config.count, this.config.sides, this.config.thresholds, this.modifier, mode
+      const result = computeProbabilities(
+        this.config.count, this.config.sides, this.config.thresholds,
+        this.modifier, mode, this.config.criticals
       );
-      const segments: SegmentData[] = probabilities.map((percent, i) => ({
+      const segments: SegmentData[] = result.categories.map((percent, i) => ({
         label: this.config.categories[i].label,
         color: this.config.categories[i].color,
         percent,
       }));
       const bar = document.createElement('stacked-bar') as StackedBar;
       bar.segments = segments;
+      bar.critHitPerCategory = result.critHitPerCategory;
+      bar.critMissPerCategory = result.critMissPerCategory;
+      bar.critConfig = this.config.criticals;
       group.appendChild(bar);
     }
 
@@ -547,6 +580,7 @@ class DiceRowElement extends HTMLElement {
     const mapped = mapThresholds(preset, this.config.count, this.config.sides);
     this.config.thresholds = mapped;
     this.config.categories = preset.categories.map(c => ({ ...c }));
+    this.config.criticals = mapCriticals(preset, this.config.count, this.config.sides);
     this._onThresholdChange();
     this._buildDialogContent();
   }
@@ -555,6 +589,7 @@ class DiceRowElement extends HTMLElement {
     this.presetName = custom.name;
     this.config.thresholds = [...custom.thresholds];
     this.config.categories = custom.categories.map(c => ({ ...c }));
+    this.config.criticals = custom.criticals ?? { type: 'none' };
     this._onThresholdChange();
     this._buildDialogContent();
   }
@@ -567,6 +602,7 @@ class DiceRowElement extends HTMLElement {
       referenceDie: this.config.label,
       thresholds: [...this.config.thresholds],
       categories: this.config.categories.map(c => ({ ...c })),
+      criticals: this.config.criticals,
     };
 
     saveCustomPreset(newPreset).then(savedId => {

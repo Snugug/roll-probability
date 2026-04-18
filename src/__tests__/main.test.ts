@@ -424,6 +424,7 @@ describe('main — persistence', () => {
           { label: 'OK', color: '#ffff00' },
           { label: 'Good', color: '#00ff00' },
         ],
+        criticals: { type: 'none' as const },
         minMod: -1,
         maxMod: 3,
       };

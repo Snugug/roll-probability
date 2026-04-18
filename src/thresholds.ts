@@ -1,4 +1,5 @@
-import { parseDiceNotation } from './engine';
+import { parseDiceNotation, type CriticalConfig } from './engine';
+export type { CriticalConfig } from './engine';
 
 export interface SavedSettings {
   diceList: string[];
@@ -10,6 +11,7 @@ export interface SavedDiceThreshold {
   presetName: string;
   categories: ThresholdCategory[];
   thresholds: number[];
+  criticals?: CriticalConfig;
   minMod: number;
   maxMod: number;
 }
@@ -20,6 +22,7 @@ export interface SavedCustomPreset {
   referenceDie: string;
   thresholds: number[];
   categories: ThresholdCategory[];
+  criticals?: CriticalConfig;
 }
 
 export interface ThresholdCategory {
@@ -32,6 +35,7 @@ export interface ThresholdPreset {
   referenceDie: string;
   thresholds: number[];
   categories: ThresholdCategory[];
+  criticals: CriticalConfig;
 }
 
 export interface DiceConfig {
@@ -40,6 +44,7 @@ export interface DiceConfig {
   label: string;
   thresholds: number[];
   categories: ThresholdCategory[];
+  criticals: CriticalConfig;
   presetName?: string;
   minMod: number;
   maxMod: number;
@@ -54,6 +59,7 @@ export const PBTA_PRESET: ThresholdPreset = {
     { label: 'Weak Hit', color: '#facc15' },
     { label: 'Strong Hit', color: '#4ade80' },
   ],
+  criticals: { type: 'none' },
 };
 
 export const DND_PRESET: ThresholdPreset = {
@@ -69,6 +75,7 @@ export const DND_PRESET: ThresholdPreset = {
     { label: 'Very Hard', color: '#ef4444' },
     { label: 'Nearly Impossible', color: '#a855f7' },
   ],
+  criticals: { type: 'natural', hit: 20, miss: 1 },
 };
 
 export const BUILTIN_PRESETS: ThresholdPreset[] = [PBTA_PRESET, DND_PRESET];
@@ -98,6 +105,27 @@ export function mapThresholds(
   return preset.thresholds.map(t => {
     return targetMin + Math.round(((t - refMin) / refRange) * targetRange);
   });
+}
+
+export function mapCriticals(
+  preset: ThresholdPreset,
+  targetCount: number,
+  targetSides: number
+): CriticalConfig {
+  if (preset.criticals.type !== 'natural') return preset.criticals;
+  const ref = parseDiceNotation(preset.referenceDie);
+  if (!ref) return preset.criticals;
+  const refMin = ref.count;
+  const refMax = ref.count * ref.sides;
+  const refRange = refMax - refMin;
+  const targetMin = targetCount;
+  const targetMax = targetCount * targetSides;
+  const targetRange = targetMax - targetMin;
+  return {
+    type: 'natural',
+    hit: targetMin + Math.round(((preset.criticals.hit - refMin) / refRange) * targetRange),
+    miss: targetMin + Math.round(((preset.criticals.miss - refMin) / refRange) * targetRange),
+  };
 }
 
 const DB_NAME = 'dice-visualizer';
