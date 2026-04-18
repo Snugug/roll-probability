@@ -239,6 +239,14 @@ describe('conditional-doubles forcing with advantage', () => {
       expect(withDoubles.categories[i]).toBeCloseTo(noCrit.categories[i], 10);
     }
   });
+
+  it('disadvantage with unconditional doubles uses keepDropHighest', () => {
+    const result = computeDisadvantageProbabilities(2, 6, [7, 10], 0, { type: 'doubles', color: '#f00', label: 'Crit' });
+    // 3d6 keep lowest 2: doubles detected in the kept pair
+    const totalDoubles = result.critHitPerCategory.reduce((a, b) => a + b, 0);
+    expect(totalDoubles).toBeGreaterThan(0);
+    expect(result.categories.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+  });
 });
 
 describe('parseDiceNotation', () => {

@@ -847,6 +847,78 @@ describe('dialog crit editor', () => {
   });
 });
 
+describe('stacked-bar nullish coalescing branches', () => {
+  it('_renderSubdivided handles missing crit array entries via ?? 0', () => {
+    // Create a stacked-bar with segments but shorter crit arrays to trigger ?? 0
+    const bar = document.createElement('stacked-bar') as any;
+    bar.segments = [
+      { label: 'A', color: '#ff0000', percent: 60 },
+      { label: 'B', color: '#00ff00', percent: 40 },
+    ];
+    // Provide arrays shorter than segments length — index 1 will be undefined
+    bar.critHitPerCategory = [5];
+    bar.critMissPerCategory = [3];
+    bar.critConfig = { type: 'none' };
+    container.appendChild(bar);
+    const segs = bar.querySelectorAll('.seg');
+    // Should render without error; undefined entries fall back to 0
+    expect(segs.length).toBeGreaterThan(0);
+  });
+
+  it('_renderPooled handles missing crit array entries via ?? 0', () => {
+    const bar = document.createElement('stacked-bar') as any;
+    bar.segments = [
+      { label: 'A', color: '#ff0000', percent: 60 },
+      { label: 'B', color: '#00ff00', percent: 40 },
+    ];
+    // Shorter than segments — index 1 will be undefined
+    bar.critHitPerCategory = [10];
+    bar.critMissPerCategory = [];
+    bar.critConfig = { type: 'doubles', color: '#ffaa00', label: 'Doubles' };
+    container.appendChild(bar);
+    const segs = bar.querySelectorAll('.seg');
+    expect(segs.length).toBeGreaterThan(0);
+  });
+});
+
+describe('custom preset without criticals field', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    for (const db of dbs) {
+      if (db.name) {
+        await new Promise<void>((resolve) => {
+          const req = indexedDB.deleteDatabase(db.name!);
+          req.onsuccess = () => resolve();
+          req.onblocked = () => resolve();
+        });
+      }
+    }
+  });
+
+  it('switching to custom preset without criticals defaults to none', async () => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    // Manually inject a custom preset without criticals field
+    row._customPresets = [{
+      name: 'No Crits',
+      referenceDie: '2d6',
+      thresholds: [7, 10],
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Weak Hit', color: '#facc15' },
+        { label: 'Strong Hit', color: '#4ade80' },
+      ],
+      // criticals is intentionally omitted
+    }];
+    row._buildDialogContent();
+    // Click the custom preset's select button
+    const selectBtn = row._dialog.querySelector('.preset-chip-select') as HTMLButtonElement;
+    selectBtn.click();
+    expect(row.config.criticals).toEqual({ type: 'none' });
+  });
+});
+
 describe('preset switching with criticals (Task 13)', () => {
   beforeEach(async () => {
     const dbs = await indexedDB.databases();

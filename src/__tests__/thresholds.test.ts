@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   PBTA_PRESET,
   DND_PRESET,
   mapThresholds,
   mapCriticals,
   type ThresholdPreset,
+  openDB,
   loadSettings,
   saveSettings,
   loadDiceThresholds,
@@ -363,5 +364,80 @@ describe('migrateFromLocalStorage', () => {
     // Settings should be defaults since migration failed
     const settings = await loadSettings();
     expect(settings.diceList).toEqual(['2d6', '2d12', '1d20']);
+  });
+});
+
+describe('IndexedDB error paths', () => {
+  it('openDB rejects when indexedDB.open fires onerror', async () => {
+    const spy = vi.spyOn(indexedDB, 'open').mockImplementation(() => {
+      const fakeRequest: any = {};
+      let onerrorHandler: any;
+      let onsuccessHandler: any;
+      Object.defineProperty(fakeRequest, 'onerror', {
+        set(fn: any) { onerrorHandler = fn; },
+        get() { return onerrorHandler; },
+      });
+      Object.defineProperty(fakeRequest, 'onsuccess', {
+        set(fn: any) { onsuccessHandler = fn; },
+        get() { return onsuccessHandler; },
+      });
+      Object.defineProperty(fakeRequest, 'onupgradeneeded', {
+        set() {},
+        get() { return null; },
+      });
+      fakeRequest.error = new DOMException('Test open error');
+      // Fire onerror async
+      setTimeout(() => {
+        if (onerrorHandler) onerrorHandler(new Event('error'));
+      }, 0);
+      return fakeRequest;
+    });
+
+    await expect(openDB()).rejects.toBeTruthy();
+    spy.mockRestore();
+  });
+
+  it('loadSettings rejects when idbRequest onerror fires', async () => {
+    // Spy on openDB to return a fake DB that triggers onerror on the request
+    const spy = vi.spyOn(indexedDB, 'open').mockImplementation(() => {
+      const fakeRequest: any = {};
+      let onsuccessHandler: any;
+      Object.defineProperty(fakeRequest, 'onerror', { set() {}, get() { return null; } });
+      Object.defineProperty(fakeRequest, 'onsuccess', {
+        set(fn: any) { onsuccessHandler = fn; },
+        get() { return onsuccessHandler; },
+      });
+      Object.defineProperty(fakeRequest, 'onupgradeneeded', { set() {}, get() { return null; } });
+
+      const fakeDb: any = {
+        close: vi.fn(),
+        transaction: () => ({
+          objectStore: () => ({
+            get: () => {
+              const req: any = {};
+              let onerror: any;
+              Object.defineProperty(req, 'onsuccess', { set() {}, get() { return null; } });
+              Object.defineProperty(req, 'onerror', {
+                set(fn: any) { onerror = fn; },
+                get() { return onerror; },
+              });
+              req.error = new DOMException('Test request error');
+              setTimeout(() => {
+                if (onerror) onerror(new Event('error'));
+              }, 0);
+              return req;
+            },
+          }),
+        }),
+      };
+      fakeRequest.result = fakeDb;
+      setTimeout(() => {
+        if (onsuccessHandler) onsuccessHandler(new Event('success'));
+      }, 0);
+      return fakeRequest;
+    });
+
+    await expect(loadSettings()).rejects.toBeTruthy();
+    spy.mockRestore();
   });
 });
