@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { computeViewData } from '../src/components/dice-view-data';
 import type { DiceConfig } from '../src/thresholds';
+import { BarColumn } from '../src/components/bar-column';
+import '../src/renderer'; // registers custom elements
 
 const config2d6: DiceConfig = {
   count: 2, sides: 6, label: '2d6',
@@ -67,5 +69,62 @@ describe('computeViewData', () => {
     const data = computeViewData(config2d6, false, false);
     expect(data[0].results.normal!.critHitPerCategory).toBeDefined();
     expect(data[0].results.normal!.critMissPerCategory).toBeDefined();
+  });
+});
+
+describe('BarColumn with pre-computed data', () => {
+  let container: HTMLElement;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    container.remove();
+  });
+
+  it('renders stacked bars from modeResults', () => {
+    const col = document.createElement('bar-column') as BarColumn;
+    col.modifier = 0;
+    col.showAdvantage = false;
+    col.showDisadvantage = false;
+    col.critConfig = { type: 'none' };
+    col.modeResults = {
+      normal: {
+        segments: [
+          { label: 'Miss', color: '#f87171', percent: 27.78 },
+          { label: 'Weak Hit', color: '#facc15', percent: 44.44 },
+          { label: 'Strong Hit', color: '#4ade80', percent: 27.78 },
+        ],
+        critHitPerCategory: [0, 0, 0],
+        critMissPerCategory: [0, 0, 0],
+      },
+    };
+    container.appendChild(col);
+    expect(col.querySelectorAll('stacked-bar').length).toBe(1);
+  });
+
+  it('renders three bars when all modes provided', () => {
+    const modeResult = {
+      segments: [
+        { label: 'A', color: '#f00', percent: 50 },
+        { label: 'B', color: '#0f0', percent: 50 },
+      ],
+      critHitPerCategory: [0, 0],
+      critMissPerCategory: [0, 0],
+    };
+    const col = document.createElement('bar-column') as BarColumn;
+    col.modifier = 1;
+    col.showAdvantage = true;
+    col.showDisadvantage = true;
+    col.critConfig = { type: 'none' };
+    col.modeResults = {
+      disadvantage: modeResult,
+      normal: modeResult,
+      advantage: modeResult,
+    };
+    container.appendChild(col);
+    expect(col.querySelectorAll('stacked-bar').length).toBe(3);
   });
 });

@@ -1,12 +1,13 @@
-import { computeProbabilities, type RollMode } from '../engine';
-import type { DiceConfig } from '../thresholds';
-import { StackedBar, type SegmentData } from './stacked-bar';
+import type { RollMode, CriticalConfig } from '../engine';
+import { StackedBar } from './stacked-bar';
+import type { ModeResult } from './dice-view-data';
 
 export class BarColumn extends HTMLElement {
-  config!: DiceConfig;
   modifier = 0;
   showAdvantage = true;
   showDisadvantage = true;
+  critConfig: CriticalConfig = { type: 'none' };
+  modeResults: Partial<Record<RollMode, ModeResult>> = {};
 
   connectedCallback() {
     const typeRow = document.createElement('div');
@@ -44,20 +45,13 @@ export class BarColumn extends HTMLElement {
 
     for (const { mode, show } of modes) {
       if (!show) continue;
-      const result = computeProbabilities(
-        this.config.count, this.config.sides, this.config.thresholds,
-        this.modifier, mode, this.config.criticals
-      );
-      const segments: SegmentData[] = result.categories.map((percent, i) => ({
-        label: this.config.categories[i].label,
-        color: this.config.categories[i].color,
-        percent,
-      }));
+      const result = this.modeResults[mode];
+      if (!result) continue;
       const bar = document.createElement('stacked-bar') as StackedBar;
-      bar.segments = segments;
+      bar.segments = result.segments;
       bar.critHitPerCategory = result.critHitPerCategory;
       bar.critMissPerCategory = result.critMissPerCategory;
-      bar.critConfig = this.config.criticals;
+      bar.critConfig = this.critConfig;
       group.appendChild(bar);
     }
 
