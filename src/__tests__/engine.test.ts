@@ -132,6 +132,115 @@ describe('computeNormalProbabilities with criticals', () => {
   });
 });
 
+describe('natural roll criticals', () => {
+  it('1d20 nat 20 hit / nat 1 miss at mod 0', () => {
+    const result = computeNormalProbabilities(1, 20, [5, 10, 15, 20, 25, 30], 0, { type: 'natural', hit: 20, miss: 1 });
+    expect(result.critHitPerCategory[4]).toBeCloseTo(5, 10); // nat 20 → Hard
+    expect(result.critMissPerCategory[0]).toBeCloseTo(5, 10); // nat 1 → Trivial
+    expect(result.critHitPerCategory[0]).toBe(0);
+    expect(result.critMissPerCategory[4]).toBe(0);
+  });
+
+  it('1d20 nat crits migrate with modifier', () => {
+    const result = computeNormalProbabilities(1, 20, [5, 10, 15, 20, 25, 30], 5, { type: 'natural', hit: 20, miss: 1 });
+    expect(result.critHitPerCategory[5]).toBeCloseTo(5, 10); // nat 20 → value 25 → Very Hard
+    expect(result.critMissPerCategory[1]).toBeCloseTo(5, 10); // nat 1 → value 6 → Very Easy
+  });
+
+  it('2d10 nat 20 only triggers on [10,10], nat 2 on [1,1]', () => {
+    const result = computeNormalProbabilities(2, 10, [11, 16], 0, { type: 'natural', hit: 20, miss: 2 });
+    expect(result.critHitPerCategory[2]).toBeCloseTo(1, 10); // 1/100
+    expect(result.critMissPerCategory[0]).toBeCloseTo(1, 10); // 1/100
+  });
+
+  it('impossible miss value yields 0 crit miss', () => {
+    const result = computeNormalProbabilities(2, 6, [7, 10], 0, { type: 'natural', hit: 12, miss: 1 });
+    expect(result.critMissPerCategory.every(v => v === 0)).toBe(true);
+    expect(result.critHitPerCategory[2]).toBeCloseTo((1 / 36) * 100, 10);
+  });
+
+  it('categories still sum to 100', () => {
+    const result = computeNormalProbabilities(1, 20, [5, 10, 15, 20, 25, 30], 0, { type: 'natural', hit: 20, miss: 1 });
+    expect(result.categories.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+  });
+});
+
+describe('conditional-doubles criticals', () => {
+  it('2d6 doubles in Miss (cat 0) and Strong Hit (cat 2)', () => {
+    const result = computeNormalProbabilities(2, 6, [7, 10], 0, { type: 'conditional-doubles', hit: 2, miss: 0 });
+    expect(result.critMissPerCategory[0]).toBeCloseTo((3 / 36) * 100, 10); // (1,1),(2,2),(3,3)
+    expect(result.critHitPerCategory[2]).toBeCloseTo((2 / 36) * 100, 10); // (5,5),(6,6)
+    expect(result.critHitPerCategory[1]).toBe(0);
+    expect(result.critMissPerCategory[1]).toBe(0);
+  });
+
+  it('2d6 with modifier shifts which doubles land in crit zones', () => {
+    const result = computeNormalProbabilities(2, 6, [7, 10], 3, { type: 'conditional-doubles', hit: 2, miss: 0 });
+    expect(result.critMissPerCategory[0]).toBeCloseTo((1 / 36) * 100, 10); // only (1,1)=5 ≤6
+    expect(result.critHitPerCategory[2]).toBeCloseTo((3 / 36) * 100, 10); // (4,4)=11,(5,5)=13,(6,6)=15
+  });
+
+  it('3d6 detects any-pair among all dice', () => {
+    const result = computeNormalProbabilities(3, 6, [7, 10], 0, { type: 'conditional-doubles', hit: 2, miss: 0 });
+    expect(result.critHitPerCategory[2]).toBeGreaterThan(0);
+    expect(result.critMissPerCategory[0]).toBeGreaterThan(0);
+    expect(result.categories.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+  });
+
+  it('categories still sum to 100', () => {
+    const result = computeNormalProbabilities(2, 6, [7, 10], 0, { type: 'conditional-doubles', hit: 2, miss: 0 });
+    expect(result.categories.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+  });
+});
+
+describe('unconditional doubles criticals', () => {
+  it('2d6 counts all doubles across categories', () => {
+    const result = computeNormalProbabilities(2, 6, [7, 10], 0, { type: 'doubles', color: '#ff0000', label: 'Crit' });
+    expect(result.critHitPerCategory[0]).toBeCloseTo((3 / 36) * 100, 10); // (1,1),(2,2),(3,3) in Miss
+    expect(result.critHitPerCategory[1]).toBeCloseTo((1 / 36) * 100, 10); // (4,4) in Weak Hit
+    expect(result.critHitPerCategory[2]).toBeCloseTo((2 / 36) * 100, 10); // (5,5),(6,6) in Strong Hit
+    expect(result.critMissPerCategory).toEqual([0, 0, 0]);
+  });
+
+  it('total doubles percentage is correct', () => {
+    const result = computeNormalProbabilities(2, 6, [7, 10], 0, { type: 'doubles', color: '#ff0000', label: 'Crit' });
+    const total = result.critHitPerCategory.reduce((a, b) => a + b, 0);
+    expect(total).toBeCloseTo((6 / 36) * 100, 10);
+  });
+
+  it('categories still sum to 100', () => {
+    const result = computeNormalProbabilities(2, 6, [7, 10], 0, { type: 'doubles', color: '#ff0000', label: 'Crit' });
+    expect(result.categories.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+  });
+});
+
+describe('conditional-doubles forcing with advantage', () => {
+  it('advantage forces doubles when they land in hit category', () => {
+    // Use hit: 1 (middle category) so forcing can pull outcomes down from higher categories
+    const withCrit = computeAdvantageProbabilities(2, 6, [3, 7], 0, { type: 'conditional-doubles', hit: 1, miss: 0 });
+    const noCrit = computeAdvantageProbabilities(2, 6, [3, 7], 0);
+    expect(withCrit.critHitPerCategory[1]).toBeGreaterThan(0);
+    // Category distributions should differ due to forcing
+    expect(withCrit.categories).not.toEqual(noCrit.categories);
+    expect(withCrit.categories.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+  });
+
+  it('disadvantage forces doubles when they land in miss category', () => {
+    // Use miss: 1 (middle category) so forcing can push outcomes up from lower categories
+    const withCrit = computeDisadvantageProbabilities(2, 6, [3, 7], 0, { type: 'conditional-doubles', hit: 2, miss: 1 });
+    expect(withCrit.critMissPerCategory[1]).toBeGreaterThan(0);
+    expect(withCrit.categories.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+  });
+
+  it('unconditional doubles does NOT use forcing', () => {
+    const withDoubles = computeAdvantageProbabilities(2, 6, [7, 10], 0, { type: 'doubles', color: '#f00', label: 'Crit' });
+    const noCrit = computeAdvantageProbabilities(2, 6, [7, 10], 0);
+    for (let i = 0; i < noCrit.categories.length; i++) {
+      expect(withDoubles.categories[i]).toBeCloseTo(noCrit.categories[i], 10);
+    }
+  });
+});
+
 describe('parseDiceNotation', () => {
   it('parses standard notation', () => {
     expect(parseDiceNotation('2d6')).toEqual({ count: 2, sides: 6 });

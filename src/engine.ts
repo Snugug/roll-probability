@@ -12,13 +12,37 @@ export interface ProbabilityResult {
   critMissPerCategory: number[];
 }
 
+function hasDoubles(kept: number[]): boolean {
+  for (let i = 0; i < kept.length; i++) {
+    for (let j = i + 1; j < kept.length; j++) {
+      if (kept[i] === kept[j]) return true;
+    }
+  }
+  return false;
+}
+
+function keepAll(dice: number[]): number[] {
+  return [...dice];
+}
+
+function keepDropLowest(dice: number[]): number[] {
+  const sorted = [...dice].sort((a, b) => a - b);
+  return sorted.slice(1);
+}
+
+function keepDropHighest(dice: number[]): number[] {
+  const sorted = [...dice].sort((a, b) => a - b);
+  return sorted.slice(0, -1);
+}
+
 function classifyOutcomes(
   numDice: number,
   sides: number,
   thresholds: number[],
   modifier: number,
   sumFn: (dice: number[]) => number,
-  criticals: CriticalConfig = { type: 'none' }
+  criticals: CriticalConfig = { type: 'none' },
+  keptDiceFn: (dice: number[]) => number[] = keepAll
 ): ProbabilityResult {
   const numCategories = thresholds.length + 1;
   const counts = new Array<number>(numCategories).fill(0);
@@ -30,7 +54,8 @@ function classifyOutcomes(
   function recurse(depth: number): void {
     if (depth === numDice) {
       total++;
-      const sum = sumFn(dice) + modifier;
+      const rawSum = sumFn(dice);
+      const sum = rawSum + modifier;
       let catIndex = 0;
       for (let i = 0; i < thresholds.length; i++) {
         if (sum >= thresholds[i]) {
@@ -38,6 +63,23 @@ function classifyOutcomes(
         }
       }
       counts[catIndex]++;
+
+      if (criticals.type === 'natural') {
+        if (rawSum === criticals.hit) critHitCounts[catIndex]++;
+        if (rawSum === criticals.miss) critMissCounts[catIndex]++;
+      } else if (criticals.type === 'conditional-doubles') {
+        const kept = keptDiceFn(dice);
+        if (hasDoubles(kept)) {
+          if (catIndex === criticals.hit) critHitCounts[catIndex]++;
+          if (catIndex === criticals.miss) critMissCounts[catIndex]++;
+        }
+      } else if (criticals.type === 'doubles') {
+        const kept = keptDiceFn(dice);
+        if (hasDoubles(kept)) {
+          critHitCounts[catIndex]++;
+        }
+      }
+
       return;
     }
     for (let v = 1; v <= sides; v++) {
@@ -88,18 +130,140 @@ export function computeNormalProbabilities(
   return classifyOutcomes(count, sides, thresholds, modifier, sumAll, criticals);
 }
 
+function makeForcingAdvSumFn(
+  count: number, thresholds: number[], modifier: number, hitCat: number
+): (dice: number[]) => number {
+  return (dice: number[]): number => {
+    const sorted = [...dice].sort((a, b) => a - b);
+    const standardKept = sorted.slice(1);
+    const standardSum = standardKept.reduce((a, b) => a + b, 0);
+
+    // Check all possible kept subsets of size `count` for doubles in hit category
+    let bestAlt = -1;
+    for (let drop = 0; drop < dice.length; drop++) {
+      const kept = sorted.filter((_, i) => i !== drop);
+      if (!hasDoubles(kept)) continue;
+      const altSum = kept.reduce((a, b) => a + b, 0);
+      const altVal = altSum + modifier;
+      let altCat = 0;
+      for (let i = 0; i < thresholds.length; i++) {
+        if (altVal >= thresholds[i]) altCat = i + 1;
+      }
+      if (altCat === hitCat && altSum > bestAlt) {
+        bestAlt = altSum;
+      }
+    }
+
+    return bestAlt >= 0 ? bestAlt : standardSum;
+  };
+}
+
+function makeForcingAdvKeptFn(
+  count: number, thresholds: number[], modifier: number, hitCat: number
+): (dice: number[]) => number[] {
+  return (dice: number[]): number[] => {
+    const sorted = [...dice].sort((a, b) => a - b);
+    const standardKept = sorted.slice(1);
+    const standardSum = standardKept.reduce((a, b) => a + b, 0);
+
+    let bestAlt = -1;
+    let bestKept = standardKept;
+    for (let drop = 0; drop < dice.length; drop++) {
+      const kept = sorted.filter((_, i) => i !== drop);
+      if (!hasDoubles(kept)) continue;
+      const altSum = kept.reduce((a, b) => a + b, 0);
+      const altVal = altSum + modifier;
+      let altCat = 0;
+      for (let i = 0; i < thresholds.length; i++) {
+        if (altVal >= thresholds[i]) altCat = i + 1;
+      }
+      if (altCat === hitCat && altSum > bestAlt) {
+        bestAlt = altSum;
+        bestKept = kept;
+      }
+    }
+
+    return bestAlt >= 0 ? bestKept : standardKept;
+  };
+}
+
+function makeForcingDisSumFn(
+  count: number, thresholds: number[], modifier: number, missCat: number
+): (dice: number[]) => number {
+  return (dice: number[]): number => {
+    const sorted = [...dice].sort((a, b) => a - b);
+    const standardKept = sorted.slice(0, -1);
+    const standardSum = standardKept.reduce((a, b) => a + b, 0);
+
+    let bestAlt = Infinity;
+    for (let drop = 0; drop < dice.length; drop++) {
+      const kept = sorted.filter((_, i) => i !== drop);
+      if (!hasDoubles(kept)) continue;
+      const altSum = kept.reduce((a, b) => a + b, 0);
+      const altVal = altSum + modifier;
+      let altCat = 0;
+      for (let i = 0; i < thresholds.length; i++) {
+        if (altVal >= thresholds[i]) altCat = i + 1;
+      }
+      if (altCat === missCat && altSum < bestAlt) {
+        bestAlt = altSum;
+      }
+    }
+
+    return bestAlt < Infinity ? bestAlt : standardSum;
+  };
+}
+
+function makeForcingDisKeptFn(
+  count: number, thresholds: number[], modifier: number, missCat: number
+): (dice: number[]) => number[] {
+  return (dice: number[]): number[] => {
+    const sorted = [...dice].sort((a, b) => a - b);
+    const standardKept = sorted.slice(0, -1);
+
+    let bestAlt = Infinity;
+    let bestKept = standardKept;
+    for (let drop = 0; drop < dice.length; drop++) {
+      const kept = sorted.filter((_, i) => i !== drop);
+      if (!hasDoubles(kept)) continue;
+      const altSum = kept.reduce((a, b) => a + b, 0);
+      const altVal = altSum + modifier;
+      let altCat = 0;
+      for (let i = 0; i < thresholds.length; i++) {
+        if (altVal >= thresholds[i]) altCat = i + 1;
+      }
+      if (altCat === missCat && altSum < bestAlt) {
+        bestAlt = altSum;
+        bestKept = kept;
+      }
+    }
+
+    return bestAlt < Infinity ? bestKept : standardKept;
+  };
+}
+
 export function computeAdvantageProbabilities(
   count: number, sides: number, thresholds: number[], modifier: number,
   criticals: CriticalConfig = { type: 'none' }
 ): ProbabilityResult {
-  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropLowest, criticals);
+  if (criticals.type === 'conditional-doubles') {
+    const sumFn = makeForcingAdvSumFn(count, thresholds, modifier, criticals.hit);
+    const keptFn = makeForcingAdvKeptFn(count, thresholds, modifier, criticals.hit);
+    return classifyOutcomes(count + 1, sides, thresholds, modifier, sumFn, criticals, keptFn);
+  }
+  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropLowest, criticals, keepDropLowest);
 }
 
 export function computeDisadvantageProbabilities(
   count: number, sides: number, thresholds: number[], modifier: number,
   criticals: CriticalConfig = { type: 'none' }
 ): ProbabilityResult {
-  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropHighest, criticals);
+  if (criticals.type === 'conditional-doubles') {
+    const sumFn = makeForcingDisSumFn(count, thresholds, modifier, criticals.miss);
+    const keptFn = makeForcingDisKeptFn(count, thresholds, modifier, criticals.miss);
+    return classifyOutcomes(count + 1, sides, thresholds, modifier, sumFn, criticals, keptFn);
+  }
+  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropHighest, criticals, keepDropHighest);
 }
 
 export function computeProbabilities(
