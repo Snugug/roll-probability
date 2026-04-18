@@ -6,7 +6,6 @@ interface ColumnDef {
   label: string;
   color: string;
   swatchClass: string;
-  isCrit: boolean;
   getValues: (modData: ModifierData, modes: RollMode[]) => number[];
 }
 
@@ -80,7 +79,6 @@ export class DiceTableElement extends HTMLElement implements DiceView {
         label: cat.label + ' ' + rangeText,
         color: cat.color,
         swatchClass: '',
-        isCrit: false,
         getValues: (modData, modes) =>
           modes.map(m => modData.results[m]?.segments[catIdx]?.percent ?? 0),
       });
@@ -106,8 +104,7 @@ export class DiceTableElement extends HTMLElement implements DiceView {
         label: criticals.label,
         color: criticals.color,
         swatchClass: '',
-        isCrit: true,
-        getValues: (modData, modes) =>
+          getValues: (modData, modes) =>
           modes.map(m => {
             const r = modData.results[m];
             if (!r) return 0;
@@ -124,7 +121,6 @@ export class DiceTableElement extends HTMLElement implements DiceView {
       label: 'Crit Miss',
       color,
       swatchClass: 'range-swatch-crit-miss',
-      isCrit: true,
       getValues: (modData, modes) =>
         modes.map(m => {
           const r = modData.results[m];
@@ -139,7 +135,6 @@ export class DiceTableElement extends HTMLElement implements DiceView {
       label: 'Crit Hit',
       color,
       swatchClass: 'range-swatch-crit-hit',
-      isCrit: true,
       getValues: (modData, modes) =>
         modes.map(m => {
           const r = modData.results[m];
@@ -167,7 +162,6 @@ export class DiceTableElement extends HTMLElement implements DiceView {
     for (const col of columns) {
       const th = document.createElement('th');
       if (multiMode) th.colSpan = modes.length;
-      if (col.isCrit) th.classList.add('crit-col');
 
       const swatch = document.createElement('span');
       swatch.className = col.swatchClass ? 'range-swatch ' + col.swatchClass : 'range-swatch';
@@ -187,7 +181,6 @@ export class DiceTableElement extends HTMLElement implements DiceView {
       for (const col of columns) {
         for (const mode of modes) {
           const th = document.createElement('th');
-          if (col.isCrit) th.classList.add('crit-col');
           const modeLabel = mode === 'disadvantage' ? 'dis' : mode === 'advantage' ? 'adv' : 'base';
           const modeClass = mode === 'disadvantage' ? 'dis' : mode === 'advantage' ? 'adv' : 'nor';
           th.className = modeClass;
@@ -219,7 +212,6 @@ export class DiceTableElement extends HTMLElement implements DiceView {
         const values = col.getValues(modData, modes);
         for (const val of values) {
           const td = document.createElement('td');
-          if (col.isCrit) td.classList.add('crit-col');
           td.textContent = val.toFixed(1) + '%';
           tr.appendChild(td);
         }

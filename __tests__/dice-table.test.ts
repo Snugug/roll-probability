@@ -210,6 +210,136 @@ describe('DiceTableElement — doubles crits', () => {
   });
 });
 
+describe('DiceTableElement — crits with multi-mode', () => {
+  const naturalCfg: DiceConfig = {
+    ...config2d6,
+    criticals: { type: 'natural', hit: 12, miss: 2 },
+  };
+
+  it('renders mode sub-headers for crit columns in multi-mode', () => {
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = computeViewData(naturalCfg, true, true);
+    table.update(data, naturalCfg, true, true);
+    const headerRows = table.querySelectorAll('thead tr');
+    expect(headerRows.length).toBe(2);
+    // 5 columns (Crit Miss + 3 categories + Crit Hit) × 3 modes = 15 sub-headers
+    const modeRow = headerRows[1];
+    expect(modeRow.querySelectorAll('th').length).toBe(15);
+  });
+});
+
+describe('DiceTableElement — missing mode result fallback', () => {
+  it('renders 0% when a mode result is missing from data', () => {
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = [
+      {
+        modifier: 0,
+        results: {
+          normal: {
+            segments: [
+              { label: 'Miss', color: '#f87171', percent: 50 },
+              { label: 'Hit', color: '#4ade80', percent: 50 },
+            ],
+            critHitPerCategory: [0, 0],
+            critMissPerCategory: [0, 0],
+          },
+        },
+      },
+    ];
+    const cfg: DiceConfig = {
+      ...config2d6,
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Hit', color: '#4ade80' },
+      ],
+      thresholds: [7],
+      minMod: 0, maxMod: 0,
+    };
+    table.update(data, cfg, true, false);
+    const tds = table.querySelectorAll('tbody td');
+    // 2 categories × 2 modes (normal + advantage), but advantage has no data
+    expect(tds.length).toBe(4);
+    // advantage cells should show 0.0%
+    expect(tds[1].textContent).toBe('0.0%');
+    expect(tds[3].textContent).toBe('0.0%');
+  });
+
+  it('renders 0% for crit columns when a mode result is missing', () => {
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = [
+      {
+        modifier: 0,
+        results: {
+          normal: {
+            segments: [
+              { label: 'Miss', color: '#f87171', percent: 50 },
+              { label: 'Hit', color: '#4ade80', percent: 50 },
+            ],
+            critHitPerCategory: [0, 5],
+            critMissPerCategory: [3, 0],
+          },
+        },
+      },
+    ];
+    const cfg: DiceConfig = {
+      ...config2d6,
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Hit', color: '#4ade80' },
+      ],
+      thresholds: [7],
+      minMod: 0, maxMod: 0,
+      criticals: { type: 'natural', hit: 12, miss: 2 },
+    };
+    table.update(data, cfg, true, false);
+    // Find crit columns — they should have 0% for the missing advantage mode
+    const tds = table.querySelectorAll('tbody td');
+    const zeroCells = Array.from(tds).filter(td => td.textContent === '0.0%');
+    expect(zeroCells.length).toBeGreaterThan(0);
+  });
+});
+
+describe('DiceTableElement — doubles crit missing mode fallback', () => {
+  it('renders 0% for doubles column when a mode result is missing', () => {
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = [
+      {
+        modifier: 0,
+        results: {
+          normal: {
+            segments: [
+              { label: 'Miss', color: '#f87171', percent: 50 },
+              { label: 'Hit', color: '#4ade80', percent: 50 },
+            ],
+            critHitPerCategory: [5, 5],
+            critMissPerCategory: [0, 0],
+          },
+        },
+      },
+    ];
+    const cfg: DiceConfig = {
+      ...config2d6,
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Hit', color: '#4ade80' },
+      ],
+      thresholds: [7],
+      minMod: 0, maxMod: 0,
+      criticals: { type: 'doubles', color: '#ffaa00', label: 'Doubles!' },
+    };
+    table.update(data, cfg, true, false);
+    // 3 columns (Miss, Hit, Doubles!) × 2 modes (normal + advantage) = 6 tds
+    const tds = table.querySelectorAll('tbody td');
+    expect(tds.length).toBe(6);
+    // Last column advantage cell should be 0.0%
+    expect(tds[5].textContent).toBe('0.0%');
+  });
+});
+
 describe('DiceTableElement — replaces on update', () => {
   it('clears previous content on re-render', () => {
     const table = document.createElement('dice-table') as DiceTableElement;
