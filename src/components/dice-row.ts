@@ -2,7 +2,6 @@ import { loadCustomPresets, type DiceConfig } from '../thresholds';
 import { ThresholdEditorState } from '../editor-state';
 import { computeViewData, type ModifierData, type DiceView } from './dice-view-data';
 import { BarChartView } from './bar-chart-view';
-import { BarColumn } from './bar-column';
 import { DiceTableElement } from './dice-table';
 import { buildDialogContent, renderCritSubInputs } from './dialog-builder';
 import { createGearSvg, createTableSvg, createBarChartSvg } from './icons';
@@ -167,26 +166,23 @@ export class DiceRowElement extends HTMLElement {
       dialog: this._dialog,
       config: this.config,
       state: this._state,
-      renderPreviewBars: (container) => this._renderPreviewBars(container),
+      renderPreview: (container) => this._renderPreview(container),
       onToggleView: () => this._handleToggleView(),
     });
   }
 
-  private _renderPreviewBars(previewContainer: HTMLElement) {
+  private _renderPreview(previewContainer: HTMLElement) {
     previewContainer.replaceChildren();
     const previewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
-    const barsWrapper = document.createElement('div');
-    barsWrapper.className = 'bars';
-    for (const modData of previewData) {
-      const col = document.createElement('bar-column') as BarColumn;
-      col.modifier = modData.modifier;
-      col.showAdvantage = this.showAdvantage;
-      col.showDisadvantage = this.showDisadvantage;
-      col.critConfig = this.config.criticals;
-      col.modeResults = modData.results;
-      barsWrapper.appendChild(col);
+    if (this.config.viewMode === 'table') {
+      const tableView = document.createElement('dice-table') as DiceTableElement;
+      tableView.update(previewData, this.config, this.showAdvantage, this.showDisadvantage);
+      previewContainer.appendChild(tableView);
+    } else {
+      const barView = document.createElement('bar-chart-view') as BarChartView;
+      barView.update(previewData, this.config, this.showAdvantage, this.showDisadvantage);
+      previewContainer.appendChild(barView);
     }
-    previewContainer.appendChild(barsWrapper);
   }
 
   private _updateDialogValues(): void {
@@ -202,7 +198,7 @@ export class DiceRowElement extends HTMLElement {
 
     const preview = this._dialog.querySelector('.dialog-preview') as HTMLElement | null;
     if (preview) {
-      this._renderPreviewBars(preview);
+      this._renderPreview(preview);
     }
 
     // Update the active view with recomputed data
@@ -222,7 +218,7 @@ export class DiceRowElement extends HTMLElement {
     }
     const preview = this._dialog.querySelector('.dialog-preview') as HTMLElement | null;
     if (preview) {
-      this._renderPreviewBars(preview);
+      this._renderPreview(preview);
     }
   }
 

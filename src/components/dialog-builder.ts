@@ -9,7 +9,7 @@ export interface DialogContext {
   dialog: HTMLDialogElement;
   config: DiceConfig;
   state: ThresholdEditorState;
-  renderPreviewBars: (container: HTMLElement) => void;
+  renderPreview: (container: HTMLElement) => void;
   onToggleView: () => void;
 }
 
@@ -51,7 +51,7 @@ export function buildDialogContent(ctx: DialogContext): void {
   // Preview
   const preview = document.createElement('div');
   preview.className = 'dialog-preview';
-  ctx.renderPreviewBars(preview);
+  ctx.renderPreview(preview);
   ctx.dialog.appendChild(preview);
 
   // Preset chips
