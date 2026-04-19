@@ -461,4 +461,31 @@ describe('main — persistence', () => {
     const loaded = await loadDiceThresholds(id);
     expect(loaded!.viewMode).toBeUndefined();
   });
+
+  it('deletes dice row via dialog delete button', async () => {
+    const init = await loadInit();
+    await init();
+
+    expect(document.querySelectorAll('dice-row').length).toBe(3);
+    const row = document.querySelector('dice-row') as any;
+    const firstId = row.config.id;
+
+    // Click the delete button in the dialog
+    const deleteBtn = row._dialog.querySelector('.dialog-delete') as HTMLButtonElement;
+    deleteBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+
+    // Row removed from DOM
+    expect(document.querySelectorAll('dice-row').length).toBe(2);
+
+    // Settings updated
+    const saved = await loadSettings();
+    expect(saved).not.toBeNull();
+    expect(saved!.diceList).toHaveLength(2);
+    expect(saved!.diceList).not.toContain(firstId);
+
+    // Threshold record removed from IDB
+    const loaded = await loadDiceThresholds(firstId);
+    expect(loaded).toBeNull();
+  });
 });
