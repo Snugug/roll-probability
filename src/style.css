@@ -170,9 +170,34 @@ dice-row {
   gap: 8px;
 }
 
-.dice-label {
+.dice-name-input {
+  field-sizing: content;
+  min-width: 3ch;
   font-size: 15px;
   font-weight: 700;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: #e0e0e0;
+  padding: 0;
+  font-family: inherit;
+  cursor: default;
+}
+
+.dice-name-input:focus {
+  outline: none;
+  border-bottom-color: #4ade80;
+  cursor: text;
+}
+
+.dice-notation-badge {
+  font-size: 11px;
+  color: #888;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 400;
 }
 
 .dice-ranges {
@@ -498,7 +523,7 @@ dialog::backdrop {
 
 .dialog-header {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 4px;
   padding: 12px 16px;
@@ -529,6 +554,23 @@ dialog::backdrop {
 
 .dialog-close:hover {
   color: #e0e0e0;
+}
+
+.dialog-delete {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.dialog-delete:hover {
+  color: #f87171;
 }
 
 /* ── Dialog Preview ── */

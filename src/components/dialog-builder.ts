@@ -1,7 +1,7 @@
 import { BUILTIN_PRESETS, type DiceConfig } from '../thresholds';
 import type { ThresholdEditorState } from '../editor-state';
 import { renderCritSubInputs } from './crit-sub-inputs';
-import { createTableSvg, createBarChartSvg, createCloseSvg } from './icons';
+import { createTableSvg, createBarChartSvg, createCloseSvg, createDeleteSvg } from './icons';
 
 export { renderCritSubInputs } from './crit-sub-inputs';
 
@@ -11,6 +11,7 @@ export interface DialogContext {
   state: ThresholdEditorState;
   renderPreview: (container: HTMLElement) => void;
   onToggleView: () => void;
+  onDelete?: () => void;
 }
 
 export function buildDialogContent(ctx: DialogContext): void {
@@ -22,7 +23,7 @@ export function buildDialogContent(ctx: DialogContext): void {
   dialogHeader.className = 'dialog-header';
 
   const h3 = document.createElement('h3');
-  h3.textContent = ctx.config.label + ' Thresholds';
+  h3.textContent = ctx.config.name + ' Thresholds';
   dialogHeader.appendChild(h3);
 
   const viewToggleBtn = document.createElement('button');
@@ -37,6 +38,15 @@ export function buildDialogContent(ctx: DialogContext): void {
     );
   });
   dialogHeader.appendChild(viewToggleBtn);
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'dialog-delete';
+  deleteBtn.appendChild(createDeleteSvg());
+  deleteBtn.addEventListener('click', () => {
+    ctx.dialog.close();
+    if (ctx.onDelete) ctx.onDelete();
+  });
+  dialogHeader.appendChild(deleteBtn);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'dialog-close';

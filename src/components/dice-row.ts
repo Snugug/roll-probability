@@ -37,10 +37,47 @@ export class DiceRowElement extends HTMLElement {
     const header = document.createElement('div');
     header.className = 'dice-header';
 
-    const label = document.createElement('span');
-    label.className = 'dice-label';
-    label.textContent = this.config.label;
-    header.appendChild(label);
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'dice-name-input';
+    nameInput.value = this.config.name;
+
+    let lastCommittedName = this.config.name;
+
+    nameInput.addEventListener('focus', () => {
+      nameInput.select();
+    });
+
+    nameInput.addEventListener('blur', () => {
+      const val = nameInput.value.trim();
+      if (!val) {
+        nameInput.value = lastCommittedName;
+      } else {
+        this.config.name = val;
+        lastCommittedName = val;
+        this._updateBadgeVisibility(badge);
+        if (this.onConfigChange) {
+          this.onConfigChange(this.config, this._state.presetName);
+        }
+      }
+    });
+
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        nameInput.blur();
+      } else if (e.key === 'Escape') {
+        nameInput.value = lastCommittedName;
+        nameInput.blur();
+      }
+    });
+
+    header.appendChild(nameInput);
+
+    const badge = document.createElement('span');
+    badge.className = 'dice-notation-badge';
+    badge.textContent = this.config.label;
+    header.appendChild(badge);
+    this._updateBadgeVisibility(badge);
 
     this._renderRangeItems(header);
 
@@ -57,7 +94,7 @@ export class DiceRowElement extends HTMLElement {
 
     const gearBtn = document.createElement('button');
     gearBtn.className = 'gear-btn';
-    gearBtn.setAttribute('commandfor', 'dialog-' + this.config.label);
+    gearBtn.setAttribute('commandfor', 'dialog-' + this.config.id);
     gearBtn.setAttribute('command', 'show-modal');
     gearBtn.appendChild(createGearSvg());
     header.appendChild(gearBtn);
@@ -65,7 +102,7 @@ export class DiceRowElement extends HTMLElement {
     this.appendChild(header);
 
     this._dialog = document.createElement('dialog');
-    this._dialog.id = 'dialog-' + this.config.label;
+    this._dialog.id = 'dialog-' + this.config.id;
     this._dialog.addEventListener('close', () => {
       if (this.onDialogClose) this.onDialogClose();
     });
@@ -169,7 +206,12 @@ export class DiceRowElement extends HTMLElement {
       state: this._state,
       renderPreview: (container) => this._renderPreview(container),
       onToggleView: () => this._handleToggleView(),
+      onDelete: this.onDelete,
     });
+  }
+
+  private _updateBadgeVisibility(badge: HTMLElement): void {
+    badge.style.display = this.config.name === this.config.label ? 'none' : '';
   }
 
   private _renderPreview(previewContainer: HTMLElement) {

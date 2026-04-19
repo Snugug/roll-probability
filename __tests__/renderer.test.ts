@@ -4,6 +4,7 @@ import * as thresholds from '../src/thresholds';
 import { renderPage } from '../src/renderer';
 
 const config2d6: DiceConfig = {
+  id: 1, name: '2d6',
   count: 2, sides: 6, label: '2d6',
   thresholds: [7, 10],
   categories: [
@@ -17,6 +18,7 @@ const config2d6: DiceConfig = {
 };
 
 const config1d20: DiceConfig = {
+  id: 2, name: '1d20',
   count: 1, sides: 20, label: '1d20',
   thresholds: [5, 10, 15, 20, 25, 30],
   categories: [
@@ -75,7 +77,7 @@ describe('dice-row', () => {
   it('renders header with label and N colored range items', () => {
     renderPage(container, [config2d6], false, false);
     const row = container.querySelector('dice-row')!;
-    expect(row.querySelector('.dice-label')!.textContent).toBe('2d6');
+    expect((row.querySelector('.dice-name-input') as HTMLInputElement).value).toBe('2d6');
     const items = row.querySelectorAll('.dice-range-item');
     expect(items.length).toBe(3);
     expect(items[0].textContent).toBe('Miss ≤6');
@@ -109,13 +111,13 @@ describe('dice-row', () => {
     renderPage(container, [config2d6], false, false);
     const gearBtn = container.querySelector('.gear-btn');
     expect(gearBtn).toBeTruthy();
-    expect(gearBtn!.getAttribute('commandfor')).toBe('dialog-2d6');
+    expect(gearBtn!.getAttribute('commandfor')).toBe('dialog-1');
     expect(gearBtn!.getAttribute('command')).toBe('show-modal');
   });
 
   it('renders a dialog element', () => {
     renderPage(container, [config2d6], false, false);
-    const dialog = container.querySelector('dialog#dialog-2d6');
+    const dialog = container.querySelector('dialog#dialog-1');
     expect(dialog).toBeTruthy();
   });
 });
@@ -285,6 +287,7 @@ describe('dialog interactivity', () => {
   it('adding threshold when all removed defaults to 5', async () => {
     // Start with a 2-category config (1 threshold), create custom, remove the threshold, then add
     const twoCategory: DiceConfig = {
+      id: 3, name: '1d6',
       count: 1, sides: 6, label: '1d6',
       thresholds: [4],
       categories: [
@@ -952,6 +955,73 @@ describe('view toggle', () => {
     dialogToggle.click();
     expect(container.querySelector('bar-chart-view')).toBeTruthy();
     expect(container.querySelector('dice-table')).toBeNull();
+  });
+});
+
+describe('name input', () => {
+  it('name input commits on blur and fires onConfigChange', () => {
+    let savedConfig: DiceConfig | null = null;
+    renderPage(container, [{ ...config2d6 }], false, false, (_idx, cfg) => { savedConfig = cfg; });
+    const input = container.querySelector('.dice-name-input') as HTMLInputElement;
+    input.value = 'Attack Roll';
+    input.dispatchEvent(new Event('blur'));
+    expect(savedConfig).not.toBeNull();
+    expect(savedConfig!.name).toBe('Attack Roll');
+  });
+
+  it('name input reverts on blank blur', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const input = container.querySelector('.dice-name-input') as HTMLInputElement;
+    input.value = '';
+    input.dispatchEvent(new Event('blur'));
+    expect(input.value).toBe('2d6');
+  });
+
+  it('name input cancels on Escape', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const input = container.querySelector('.dice-name-input') as HTMLInputElement;
+    input.value = 'Something';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(input.value).toBe('2d6');
+  });
+});
+
+describe('notation badge', () => {
+  it('hides notation badge when name equals label', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const badge = container.querySelector('.dice-notation-badge') as HTMLElement;
+    expect(badge.style.display).toBe('none');
+  });
+
+  it('shows notation badge when name differs from label', () => {
+    renderPage(container, [{ ...config2d6, name: 'Attack Roll' }], false, false);
+    const badge = container.querySelector('.dice-notation-badge') as HTMLElement;
+    expect(badge.style.display).not.toBe('none');
+    expect(badge.textContent).toBe('2d6');
+  });
+});
+
+describe('delete button in dialog', () => {
+  it('dialog has a delete button between toggle and close', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const row = container.querySelector('dice-row') as any;
+    const dialogHeader = row._dialog.querySelector('.dialog-header')!;
+    const deleteBtn = dialogHeader.querySelector('.dialog-delete');
+    const toggleBtn = dialogHeader.querySelector('.view-toggle-btn');
+    const closeBtn = dialogHeader.querySelector('.dialog-close');
+    expect(deleteBtn).toBeTruthy();
+    const children = Array.from(dialogHeader.children);
+    expect(children.indexOf(toggleBtn!)).toBeLessThan(children.indexOf(deleteBtn!));
+    expect(children.indexOf(deleteBtn!)).toBeLessThan(children.indexOf(closeBtn!));
+  });
+
+  it('delete button fires onDelete callback', () => {
+    let deletedIndex = -1;
+    renderPage(container, [{ ...config2d6 }], false, false, undefined, undefined, (idx) => { deletedIndex = idx; });
+    const row = container.querySelector('dice-row') as any;
+    const deleteBtn = row._dialog.querySelector('.dialog-delete') as HTMLButtonElement;
+    deleteBtn.click();
+    expect(deletedIndex).toBe(0);
   });
 });
 
