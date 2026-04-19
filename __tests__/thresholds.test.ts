@@ -10,10 +10,11 @@ import {
   saveSettings,
   loadDiceThresholds,
   saveDiceThresholds,
+  createDiceThreshold,
+  deleteDiceThreshold,
   loadCustomPresets,
   saveCustomPreset,
   deleteCustomPreset,
-  migrateFromLocalStorage,
   type SavedSettings,
   type SavedDiceThreshold,
   type SavedCustomPreset,
@@ -72,32 +73,16 @@ describe('mapThresholds', () => {
   });
 
   it('maps D&D to 2d6 using linear proportional formula', () => {
-    // ref 1d20: min=1, max=20, range=19
-    // target 2d6: min=2, max=12, range=10
-    // threshold 5:  2 + round(4/19 * 10)  = 2 + round(2.105) = 2+2 = 4
-    // threshold 10: 2 + round(9/19 * 10)  = 2 + round(4.737) = 2+5 = 7
-    // threshold 15: 2 + round(14/19 * 10) = 2 + round(7.368) = 2+7 = 9
-    // threshold 20: 2 + round(19/19 * 10) = 2 + round(10)    = 2+10 = 12
-    // threshold 25: 2 + round(24/19 * 10) = 2 + round(12.63) = 2+13 = 15
-    // threshold 30: 2 + round(29/19 * 10) = 2 + round(15.26) = 2+15 = 17
     const result = mapThresholds(DND_PRESET, 2, 6);
     expect(result).toEqual([4, 7, 9, 12, 15, 17]);
   });
 
   it('maps PbtA to 1d20', () => {
-    // ref 2d6: min=2, max=12, range=10
-    // target 1d20: min=1, max=20, range=19
-    // threshold 7:  1 + round(5/10 * 19)  = 1 + round(9.5) = 1+10 = 11
-    // threshold 10: 1 + round(8/10 * 19)  = 1 + round(15.2) = 1+15 = 16
     const result = mapThresholds(PBTA_PRESET, 1, 20);
     expect(result).toEqual([11, 16]);
   });
 
   it('maps PbtA to 2d12', () => {
-    // ref 2d6: min=2, max=12, range=10
-    // target 2d12: min=2, max=24, range=22
-    // threshold 7:  2 + round(5/10 * 22) = 2 + round(11) = 13
-    // threshold 10: 2 + round(8/10 * 22) = 2 + round(17.6) = 2+18 = 20
     const result = mapThresholds(PBTA_PRESET, 2, 12);
     expect(result).toEqual([13, 20]);
   });
@@ -121,11 +106,7 @@ describe('built-in preset criticals', () => {
 });
 
 describe('mapCriticals', () => {
-  it('maps D&D natural crits from 1d20 to 2d10 (hit=20→20, miss=1→2)', () => {
-    // ref 1d20: min=1, max=20, range=19
-    // target 2d10: min=2, max=20, range=18
-    // hit: 2 + round((20-1)/19 * 18) = 2 + round(18) = 20
-    // miss: 2 + round((1-1)/19 * 18) = 2 + round(0) = 2
+  it('maps D&D natural crits from 1d20 to 2d10 (hit=20->20, miss=1->2)', () => {
     const result = mapCriticals(DND_PRESET, 2, 10);
     expect(result).toEqual({ type: 'natural', hit: 20, miss: 2 });
   });
@@ -178,16 +159,24 @@ describe('IndexedDB persistence', () => {
     );
   });
 
-  it('loadSettings returns defaults when no settings saved', async () => {
+  it('loadSettings returns null when no settings saved', async () => {
     const settings = await loadSettings();
-    expect(settings.diceList).toEqual(['2d6', '2d12', '1d20']);
-    expect(settings.showAdvantage).toBe(true);
-    expect(settings.showDisadvantage).toBe(true);
+    expect(settings).toBeNull();
   });
 
   it('saveSettings and loadSettings round-trip', async () => {
+    const id1 = await createDiceThreshold({
+      name: '1d6', count: 1, sides: 6,
+      presetName: 'PbtA', categories: [], thresholds: [],
+      minMod: 0, maxMod: 0,
+    });
+    const id2 = await createDiceThreshold({
+      name: '1d8', count: 1, sides: 8,
+      presetName: 'PbtA', categories: [], thresholds: [],
+      minMod: 0, maxMod: 0,
+    });
     const toSave: SavedSettings = {
-      diceList: ['1d6', '1d8'],
+      diceList: [id1, id2],
       showAdvantage: false,
       showDisadvantage: true,
     };
@@ -196,8 +185,11 @@ describe('IndexedDB persistence', () => {
     expect(loaded).toEqual(toSave);
   });
 
-  it('saveDiceThresholds and loadDiceThresholds round-trip', async () => {
-    const config: SavedDiceThreshold = {
+  it('createDiceThreshold and loadDiceThresholds round-trip', async () => {
+    const config = {
+      name: '2d6',
+      count: 2,
+      sides: 6,
       presetName: 'PbtA',
       categories: [
         { label: 'Miss', color: '#f87171' },
@@ -207,27 +199,81 @@ describe('IndexedDB persistence', () => {
       minMod: -2,
       maxMod: 5,
     };
-    await saveDiceThresholds('2d6', config);
-    const loaded = await loadDiceThresholds('2d6');
-    expect(loaded).toEqual(config);
+    const id = await createDiceThreshold(config);
+    expect(typeof id).toBe('number');
+    const loaded = await loadDiceThresholds(id);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.name).toBe('2d6');
+    expect(loaded!.count).toBe(2);
+    expect(loaded!.sides).toBe(6);
+    expect(loaded!.thresholds).toEqual([7, 10]);
   });
 
-  it('saveDiceThresholds round-trips with criticals field', async () => {
-    const config: SavedDiceThreshold = {
+  it('saveDiceThresholds updates existing entry by id', async () => {
+    const id = await createDiceThreshold({
+      name: '2d6', count: 2, sides: 6,
+      presetName: 'PbtA',
+      categories: [{ label: 'Miss', color: '#f87171' }],
+      thresholds: [7],
+      minMod: -2, maxMod: 5,
+    });
+    await saveDiceThresholds({
+      id, name: 'Attack', count: 2, sides: 6,
+      presetName: 'Custom',
+      categories: [{ label: 'Miss', color: '#ff0000' }],
+      thresholds: [8],
+      minMod: -1, maxMod: 3,
+    });
+    const loaded = await loadDiceThresholds(id);
+    expect(loaded!.name).toBe('Attack');
+    expect(loaded!.presetName).toBe('Custom');
+  });
+
+  it('deleteDiceThreshold removes the entry', async () => {
+    const id = await createDiceThreshold({
+      name: '2d6', count: 2, sides: 6,
+      presetName: 'PbtA', categories: [], thresholds: [],
+      minMod: 0, maxMod: 0,
+    });
+    await deleteDiceThreshold(id);
+    const loaded = await loadDiceThresholds(id);
+    expect(loaded).toBeNull();
+  });
+
+  it('createDiceThreshold auto-increments ids', async () => {
+    const config = {
+      name: '2d6', count: 2, sides: 6,
+      presetName: 'PbtA', categories: [], thresholds: [],
+      minMod: 0, maxMod: 0,
+    };
+    const id1 = await createDiceThreshold(config);
+    const id2 = await createDiceThreshold({ ...config, name: '1d20' });
+    expect(typeof id1).toBe('number');
+    expect(typeof id2).toBe('number');
+    expect(id2).toBeGreaterThan(id1);
+  });
+
+  it('createDiceThreshold round-trips with criticals field', async () => {
+    const config = {
+      name: '1d20', count: 1, sides: 20,
       presetName: 'D&D',
       categories: [
         { label: 'Fail', color: '#ff0000' },
         { label: 'Pass', color: '#00ff00' },
       ],
       thresholds: [10],
-      criticals: { type: 'natural', hit: 20, miss: 1 },
-      minMod: -2,
-      maxMod: 5,
+      criticals: { type: 'natural' as const, hit: 20, miss: 1 },
+      minMod: -2, maxMod: 5,
     };
-    await saveDiceThresholds('1d20', config);
-    const loaded = await loadDiceThresholds('1d20');
-    expect(loaded).toEqual(config);
+    const id = await createDiceThreshold(config);
+    const loaded = await loadDiceThresholds(id);
+    expect(loaded).not.toBeNull();
     expect(loaded!.criticals).toEqual({ type: 'natural', hit: 20, miss: 1 });
+  });
+
+  it('loadDiceThresholds returns null for unknown id', async () => {
+    const result = await loadDiceThresholds(999);
+    expect(result).toBeNull();
   });
 
   it('saveCustomPreset round-trips with criticals field', async () => {
@@ -245,11 +291,6 @@ describe('IndexedDB persistence', () => {
     const all = await loadCustomPresets();
     expect(all).toHaveLength(1);
     expect(all[0].criticals).toEqual({ type: 'natural', hit: 20, miss: 1 });
-  });
-
-  it('loadDiceThresholds returns null for unknown label', async () => {
-    const result = await loadDiceThresholds('3d8');
-    expect(result).toBeNull();
   });
 
   it('saveCustomPreset auto-increments id', async () => {
@@ -304,7 +345,7 @@ describe('IndexedDB persistence', () => {
   });
 });
 
-describe('migrateFromLocalStorage', () => {
+describe('v1 to v2 migration', () => {
   beforeEach(async () => {
     const dbs = await indexedDB.databases();
     await Promise.all(
@@ -323,47 +364,98 @@ describe('migrateFromLocalStorage', () => {
     localStorage.clear();
   });
 
-  it('migrates settings from localStorage to IndexedDB', async () => {
+  it('migrates v1 string-keyed diceThresholds to v2 auto-increment', async () => {
+    // Seed a v1 database manually
+    const v1req = indexedDB.open('dice-visualizer', 1);
+    await new Promise<void>((resolve) => {
+      v1req.onupgradeneeded = () => {
+        const db = v1req.result;
+        db.createObjectStore('settings');
+        db.createObjectStore('diceThresholds');
+        db.createObjectStore('customPresets', { keyPath: 'id', autoIncrement: true });
+      };
+      v1req.onsuccess = () => {
+        const db = v1req.result;
+        const tx = db.transaction(['settings', 'diceThresholds'], 'readwrite');
+        tx.objectStore('settings').put({
+          diceList: ['2d6'],
+          showAdvantage: true,
+          showDisadvantage: true,
+        }, 'global');
+        tx.objectStore('diceThresholds').put({
+          presetName: 'PbtA',
+          thresholds: [7, 10],
+          categories: [
+            { label: 'Miss', color: '#f87171' },
+            { label: 'Weak Hit', color: '#facc15' },
+            { label: 'Strong Hit', color: '#4ade80' },
+          ],
+          minMod: -2,
+          maxMod: 5,
+        }, '2d6');
+        tx.oncomplete = () => { db.close(); resolve(); };
+      };
+    });
+
+    // Now open with v2 — migration should run
+    const settings = await loadSettings();
+    expect(settings).not.toBeNull();
+    expect(settings!.diceList).toHaveLength(1);
+    expect(typeof settings!.diceList[0]).toBe('number');
+
+    const id = settings!.diceList[0];
+    const loaded = await loadDiceThresholds(id);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.name).toBe('2d6');
+    expect(loaded!.count).toBe(2);
+    expect(loaded!.sides).toBe(6);
+    expect(loaded!.thresholds).toEqual([7, 10]);
+  });
+
+  it('migrates localStorage settings during v1 to v2 upgrade', async () => {
     const legacy = {
       diceList: ['1d4', '1d8'],
       showAdvantage: false,
       showDisadvantage: false,
     };
     localStorage.setItem('dice-visualizer-settings', JSON.stringify(legacy));
-    await migrateFromLocalStorage();
-    const loaded = await loadSettings();
-    expect(loaded).toEqual(legacy);
+
+    // Trigger migration by opening DB (fresh install, oldVersion=0 which is < 2)
+    const settings = await loadSettings();
+    expect(settings).not.toBeNull();
+    expect(settings!.diceList).toHaveLength(2);
+    expect(typeof settings!.diceList[0]).toBe('number');
+    expect(typeof settings!.diceList[1]).toBe('number');
+    expect(settings!.showAdvantage).toBe(false);
+    expect(settings!.showDisadvantage).toBe(false);
+
+    // localStorage should be cleared
+    expect(localStorage.getItem('dice-visualizer-settings')).toBeNull();
+
+    // Verify the dice entries were created
+    const id1 = settings!.diceList[0];
+    const loaded1 = await loadDiceThresholds(id1);
+    expect(loaded1).not.toBeNull();
+    expect(loaded1!.name).toBe('1d4');
+    expect(loaded1!.count).toBe(1);
+    expect(loaded1!.sides).toBe(4);
   });
 
-  it('removes the localStorage key after migration', async () => {
-    const legacy = {
-      diceList: ['1d10'],
-      showAdvantage: true,
-      showDisadvantage: false,
-    };
-    localStorage.setItem('dice-visualizer-settings', JSON.stringify(legacy));
-    await migrateFromLocalStorage();
+  it('removes localStorage key even with invalid JSON', async () => {
+    localStorage.setItem('dice-visualizer-settings', 'not valid json!!!');
+
+    // Trigger migration
+    const db = await openDB();
+    db.close();
+
     expect(localStorage.getItem('dice-visualizer-settings')).toBeNull();
   });
 
-  it('is a no-op when no localStorage key exists', async () => {
-    await migrateFromLocalStorage();
+  it('creates default dice when no v1 data exists', async () => {
+    // Fresh install — no v1 DB, no localStorage
+    // Settings should be null since no migration populated them
     const settings = await loadSettings();
-    expect(settings).toEqual({
-      diceList: ['2d6', '2d12', '1d20'],
-      showAdvantage: true,
-      showDisadvantage: true,
-    });
-  });
-
-  it('handles invalid JSON in localStorage gracefully', async () => {
-    localStorage.setItem('dice-visualizer-settings', 'not valid json!!!');
-    await migrateFromLocalStorage();
-    // catch block does not call removeItem, so key should still be present
-    expect(localStorage.getItem('dice-visualizer-settings')).toBe('not valid json!!!');
-    // Settings should be defaults since migration failed
-    const settings = await loadSettings();
-    expect(settings.diceList).toEqual(['2d6', '2d12', '1d20']);
+    expect(settings).toBeNull();
   });
 });
 
@@ -398,7 +490,6 @@ describe('IndexedDB error paths', () => {
   });
 
   it('loadSettings rejects when idbRequest onerror fires', async () => {
-    // Spy on openDB to return a fake DB that triggers onerror on the request
     const spy = vi.spyOn(indexedDB, 'open').mockImplementation(() => {
       const fakeRequest: any = {};
       let onsuccessHandler: any;

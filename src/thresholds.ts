@@ -2,12 +2,16 @@ import { parseDiceNotation, type CriticalConfig } from './engine';
 export type { CriticalConfig } from './engine';
 
 export interface SavedSettings {
-  diceList: string[];
+  diceList: number[];
   showAdvantage: boolean;
   showDisadvantage: boolean;
 }
 
 export interface SavedDiceThreshold {
+  id?: number;
+  name: string;
+  count: number;
+  sides: number;
   presetName: string;
   categories: ThresholdCategory[];
   thresholds: number[];
@@ -40,6 +44,8 @@ export interface ThresholdPreset {
 }
 
 export interface DiceConfig {
+  id: number;
+  name: string;
   count: number;
   sides: number;
   label: string;
@@ -82,12 +88,6 @@ export const DND_PRESET: ThresholdPreset = {
 
 export const BUILTIN_PRESETS: ThresholdPreset[] = [PBTA_PRESET, DND_PRESET];
 
-const DEFAULT_SETTINGS: SavedSettings = {
-  diceList: ['2d6', '2d12', '1d20'],
-  showAdvantage: true,
-  showDisadvantage: true,
-};
-
 function diceRange(count: number, sides: number): { min: number; max: number; range: number } {
   const min = count;
   const max = count * sides;
@@ -128,21 +128,202 @@ export function mapCriticals(
 }
 
 const DB_NAME = 'dice-visualizer';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
+      const tx = request.transaction!;
+
       if (!db.objectStoreNames.contains('settings')) {
         db.createObjectStore('settings');
       }
-      if (!db.objectStoreNames.contains('diceThresholds')) {
-        db.createObjectStore('diceThresholds');
-      }
       if (!db.objectStoreNames.contains('customPresets')) {
         db.createObjectStore('customPresets', { keyPath: 'id', autoIncrement: true });
+      }
+
+      if ((event as IDBVersionChangeEvent).oldVersion < 2) {
+        let lsDiceList: string[] | null = null;
+        const lsRaw = localStorage.getItem('dice-visualizer-settings');
+        if (lsRaw) {
+          try {
+            const parsed = JSON.parse(lsRaw);
+            if (parsed && Array.isArray(parsed.diceList)) {
+              lsDiceList = parsed.diceList;
+              const settingsStore = tx.objectStore('settings');
+              settingsStore.put({
+                diceList: [],
+                showAdvantage: parsed.showAdvantage ?? true,
+                showDisadvantage: parsed.showDisadvantage ?? true,
+              }, 'global');
+            }
+          } catch { /* ignore invalid JSON */ }
+          localStorage.removeItem('dice-visualizer-settings');
+        }
+
+        if (db.objectStoreNames.contains('diceThresholds')) {
+          const oldStore = tx.objectStore('diceThresholds');
+          const allReq = oldStore.getAll();
+          const keysReq = oldStore.getAllKeys();
+
+          let entriesResult: any[] | null = null;
+          let keysResult: string[] | null = null;
+
+          const onBothReady = () => {
+            if (entriesResult === null || keysResult === null) return;
+
+            const oldDataMap = new Map<string, any>();
+            for (let i = 0; i < keysResult.length; i++) {
+              oldDataMap.set(keysResult[i], entriesResult[i]);
+            }
+
+            const settingsStore = tx.objectStore('settings');
+            const settingsReq = settingsStore.get('global');
+            settingsReq.onsuccess = () => {
+              const settings = settingsReq.result;
+              const diceList: string[] = lsDiceList
+                ?? (settings?.diceList as string[] | undefined)
+                ?? ['2d6', '2d12', '1d20'];
+
+              db.deleteObjectStore('diceThresholds');
+              const newStore = db.createObjectStore('diceThresholds', {
+                keyPath: 'id',
+                autoIncrement: true,
+              });
+
+              let remaining = diceList.length;
+              const newIds: number[] = [];
+
+              if (remaining === 0) {
+                settingsStore.put({
+                  diceList: [],
+                  showAdvantage: settings?.showAdvantage ?? true,
+                  showDisadvantage: settings?.showDisadvantage ?? true,
+                }, 'global');
+                return;
+              }
+
+              for (const label of diceList) {
+                const parsed = parseDiceNotation(label);
+                if (!parsed) {
+                  remaining--;
+                  if (remaining === 0) {
+                    settingsStore.put({
+                      diceList: newIds,
+                      showAdvantage: settings?.showAdvantage ?? true,
+                      showDisadvantage: settings?.showDisadvantage ?? true,
+                    }, 'global');
+                  }
+                  continue;
+                }
+
+                const old = oldDataMap.get(label);
+                const newEntry: any = old
+                  ? {
+                      ...old,
+                      name: label,
+                      count: parsed.count,
+                      sides: parsed.sides,
+                    }
+                  : {
+                      name: label,
+                      count: parsed.count,
+                      sides: parsed.sides,
+                      presetName: 'PbtA',
+                      thresholds: mapThresholds(PBTA_PRESET, parsed.count, parsed.sides),
+                      categories: PBTA_PRESET.categories.map(c => ({ ...c })),
+                      criticals: PBTA_PRESET.criticals,
+                      minMod: -2,
+                      maxMod: 5,
+                    };
+
+                const putReq = newStore.add(newEntry);
+                putReq.onsuccess = () => {
+                  newIds.push(putReq.result as number);
+                  remaining--;
+                  if (remaining === 0) {
+                    settingsStore.put({
+                      diceList: newIds,
+                      showAdvantage: settings?.showAdvantage ?? true,
+                      showDisadvantage: settings?.showDisadvantage ?? true,
+                    }, 'global');
+                  }
+                };
+              }
+            };
+          };
+
+          allReq.onsuccess = () => {
+            entriesResult = allReq.result;
+            onBothReady();
+          };
+          keysReq.onsuccess = () => {
+            keysResult = keysReq.result as string[];
+            onBothReady();
+          };
+        } else {
+          const newStore = db.createObjectStore('diceThresholds', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+
+          if (lsDiceList && lsDiceList.length > 0) {
+            const settingsStore = tx.objectStore('settings');
+            const settingsReq = settingsStore.get('global');
+            settingsReq.onsuccess = () => {
+              const settings = settingsReq.result;
+              let remaining = lsDiceList.length;
+              const newIds: number[] = [];
+
+              for (const label of lsDiceList) {
+                const parsed = parseDiceNotation(label);
+                if (!parsed) {
+                  remaining--;
+                  if (remaining === 0) {
+                    settingsStore.put({
+                      diceList: newIds,
+                      showAdvantage: settings?.showAdvantage ?? true,
+                      showDisadvantage: settings?.showDisadvantage ?? true,
+                    }, 'global');
+                  }
+                  continue;
+                }
+
+                const newEntry: any = {
+                  name: label,
+                  count: parsed.count,
+                  sides: parsed.sides,
+                  presetName: 'PbtA',
+                  thresholds: mapThresholds(PBTA_PRESET, parsed.count, parsed.sides),
+                  categories: PBTA_PRESET.categories.map(c => ({ ...c })),
+                  criticals: PBTA_PRESET.criticals,
+                  minMod: -2,
+                  maxMod: 5,
+                };
+
+                const putReq = newStore.add(newEntry);
+                putReq.onsuccess = () => {
+                  newIds.push(putReq.result as number);
+                  remaining--;
+                  if (remaining === 0) {
+                    settingsStore.put({
+                      diceList: newIds,
+                      showAdvantage: settings?.showAdvantage ?? true,
+                      showDisadvantage: settings?.showDisadvantage ?? true,
+                    }, 'global');
+                  }
+                };
+              }
+            };
+          }
+        }
+      } else if (!db.objectStoreNames.contains('diceThresholds')) {
+        db.createObjectStore('diceThresholds', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -157,11 +338,11 @@ function idbRequest<T>(db: IDBDatabase, req: IDBRequest<T>): Promise<T> {
   });
 }
 
-export async function loadSettings(): Promise<SavedSettings> {
+export async function loadSettings(): Promise<SavedSettings | null> {
   const db = await openDB();
   const tx = db.transaction('settings', 'readonly');
   const result = await idbRequest(db, tx.objectStore('settings').get('global'));
-  return result ?? { ...DEFAULT_SETTINGS };
+  return result ?? null;
 }
 
 export async function saveSettings(settings: SavedSettings): Promise<void> {
@@ -170,17 +351,29 @@ export async function saveSettings(settings: SavedSettings): Promise<void> {
   await idbRequest(db, tx.objectStore('settings').put(settings, 'global'));
 }
 
-export async function loadDiceThresholds(label: string): Promise<SavedDiceThreshold | null> {
+export async function loadDiceThresholds(id: number): Promise<SavedDiceThreshold | null> {
   const db = await openDB();
   const tx = db.transaction('diceThresholds', 'readonly');
-  const result = await idbRequest(db, tx.objectStore('diceThresholds').get(label));
+  const result = await idbRequest(db, tx.objectStore('diceThresholds').get(id));
   return result ?? null;
 }
 
-export async function saveDiceThresholds(label: string, config: SavedDiceThreshold): Promise<void> {
+export async function saveDiceThresholds(config: SavedDiceThreshold): Promise<void> {
   const db = await openDB();
   const tx = db.transaction('diceThresholds', 'readwrite');
-  await idbRequest(db, tx.objectStore('diceThresholds').put(config, label));
+  await idbRequest(db, tx.objectStore('diceThresholds').put(config));
+}
+
+export async function createDiceThreshold(config: Omit<SavedDiceThreshold, 'id'>): Promise<number> {
+  const db = await openDB();
+  const tx = db.transaction('diceThresholds', 'readwrite');
+  return idbRequest(db, tx.objectStore('diceThresholds').add(config)) as Promise<number>;
+}
+
+export async function deleteDiceThreshold(id: number): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction('diceThresholds', 'readwrite');
+  await idbRequest(db, tx.objectStore('diceThresholds').delete(id));
 }
 
 export async function loadCustomPresets(): Promise<SavedCustomPreset[]> {
@@ -201,14 +394,3 @@ export async function deleteCustomPreset(id: number): Promise<void> {
   await idbRequest(db, tx.objectStore('customPresets').delete(id));
 }
 
-export async function migrateFromLocalStorage(): Promise<void> {
-  const raw = localStorage.getItem('dice-visualizer-settings');
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw) as SavedSettings;
-    await saveSettings(parsed);
-    localStorage.removeItem('dice-visualizer-settings');
-  } catch {
-    // ignore invalid data
-  }
-}
