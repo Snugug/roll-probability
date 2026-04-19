@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   saveSettings,
-  saveDiceThresholds,
   loadSettings,
   loadDiceThresholds,
-  type SavedSettings,
+  createDiceThreshold,
+  saveDiceThresholds,
 } from '../src/thresholds';
-
-const STORAGE_KEY = 'dice-visualizer-settings';
 
 function setupDOM(): void {
   // Safe DOM construction for test harness — all content is static test fixtures
@@ -56,11 +54,6 @@ function setupDOM(): void {
   inputGroup.appendChild(addBtn);
   controls.appendChild(inputGroup);
 
-  const pills = document.createElement('div');
-  pills.id = 'dice-pills';
-  pills.className = 'dice-pills';
-  controls.appendChild(pills);
-
   header.appendChild(controls);
   app.appendChild(header);
 
@@ -93,6 +86,28 @@ async function loadInit() {
   return mod.init;
 }
 
+async function createTestDiceEntry(label: string, overrides?: Record<string, any>): Promise<number> {
+  const match = label.match(/^(\d+)d(\d+)$/);
+  const count = match ? parseInt(match[1]) : 2;
+  const sides = match ? parseInt(match[2]) : 6;
+  return createDiceThreshold({
+    name: label,
+    count,
+    sides,
+    presetName: 'PbtA',
+    thresholds: [7, 10],
+    categories: [
+      { label: 'Miss', color: '#f87171' },
+      { label: 'Weak Hit', color: '#facc15' },
+      { label: 'Strong Hit', color: '#4ade80' },
+    ],
+    criticals: { type: 'none' },
+    minMod: -2,
+    maxMod: 5,
+    ...overrides,
+  });
+}
+
 describe('main — loadSettings', () => {
   beforeEach(async () => {
     vi.resetModules();
@@ -106,12 +121,12 @@ describe('main — loadSettings', () => {
     const init = await loadInit();
     await init();
     expect(document.querySelectorAll('dice-row').length).toBe(3);
-    expect(document.querySelectorAll('.dice-pill').length).toBe(3);
   });
 
   it('loads saved settings from IndexedDB', async () => {
+    const id = await createTestDiceEntry('2d6');
     await saveSettings({
-      diceList: ['2d6'],
+      diceList: [id],
       showAdvantage: false,
       showDisadvantage: false,
     });
@@ -122,9 +137,11 @@ describe('main — loadSettings', () => {
     expect(document.getElementById('dis-toggle')!.classList.contains('active')).toBe(false);
   });
 
-  it('skips invalid dice notation in saved diceList', async () => {
+  it('skips missing dice IDs in saved diceList', async () => {
+    const id1 = await createTestDiceEntry('2d6');
+    const id2 = await createTestDiceEntry('2d8');
     await saveSettings({
-      diceList: ['2d6', 'bad', '2d8'],
+      diceList: [id1, 9999, id2],
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -147,13 +164,18 @@ describe('main — loadSettings', () => {
   });
 
   it('defaults minMod/maxMod when saved thresholds lack them', async () => {
+    const id = await createTestDiceEntry('2d6');
     await saveSettings({
-      diceList: ['2d6'],
+      diceList: [id],
       showAdvantage: true,
       showDisadvantage: true,
     });
-    // Save thresholds without minMod/maxMod (simulating legacy data)
-    await saveDiceThresholds('2d6', {
+    // Overwrite the saved threshold without minMod/maxMod (simulating legacy data)
+    await saveDiceThresholds({
+      id,
+      name: '2d6',
+      count: 2,
+      sides: 6,
       presetName: 'PbtA',
       thresholds: [7, 10],
       categories: [
@@ -172,12 +194,7 @@ describe('main — loadSettings', () => {
   });
 
   it('uses saved thresholds from IndexedDB when available', async () => {
-    await saveSettings({
-      diceList: ['2d6'],
-      showAdvantage: false,
-      showDisadvantage: false,
-    });
-    await saveDiceThresholds('2d6', {
+    const id = await createTestDiceEntry('2d6', {
       presetName: 'Custom',
       thresholds: [5, 8],
       categories: [
@@ -185,8 +202,11 @@ describe('main — loadSettings', () => {
         { label: 'Partial', color: '#ffff00' },
         { label: 'Success', color: '#00ff00' },
       ],
-      minMod: -2,
-      maxMod: 5,
+    });
+    await saveSettings({
+      diceList: [id],
+      showAdvantage: false,
+      showDisadvantage: false,
     });
     const init = await loadInit();
     await init();
@@ -207,8 +227,9 @@ describe('main — addDice', () => {
   });
 
   it('adds a dice type via the add button', async () => {
+    const id = await createTestDiceEntry('2d6');
     await saveSettings({
-      diceList: ['2d6'],
+      diceList: [id],
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -219,15 +240,16 @@ describe('main — addDice', () => {
     const btn = document.getElementById('dice-add') as HTMLButtonElement;
     input.value = '3d8';
     btn.click();
+    await new Promise(r => setTimeout(r, 50));
 
     expect(document.querySelectorAll('dice-row').length).toBe(2);
-    expect(document.querySelectorAll('.dice-pill').length).toBe(2);
     expect(input.value).toBe('');
   });
 
   it('adds a dice type via Enter key', async () => {
+    const id = await createTestDiceEntry('2d6');
     await saveSettings({
-      diceList: ['2d6'],
+      diceList: [id],
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -237,13 +259,15 @@ describe('main — addDice', () => {
     const input = document.getElementById('dice-input') as HTMLInputElement;
     input.value = '2d10';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await new Promise(r => setTimeout(r, 50));
 
     expect(document.querySelectorAll('dice-row').length).toBe(2);
   });
 
   it('does not add on non-Enter keydown', async () => {
+    const id = await createTestDiceEntry('2d6');
     await saveSettings({
-      diceList: ['2d6'],
+      diceList: [id],
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -258,8 +282,9 @@ describe('main — addDice', () => {
   });
 
   it('ignores empty input', async () => {
+    const id = await createTestDiceEntry('2d6');
     await saveSettings({
-      diceList: ['2d6'],
+      diceList: [id],
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -268,13 +293,15 @@ describe('main — addDice', () => {
 
     (document.getElementById('dice-input') as HTMLInputElement).value = '';
     (document.getElementById('dice-add') as HTMLButtonElement).click();
+    await new Promise(r => setTimeout(r, 50));
 
     expect(document.querySelectorAll('dice-row').length).toBe(1);
   });
 
   it('ignores invalid notation', async () => {
+    const id = await createTestDiceEntry('2d6');
     await saveSettings({
-      diceList: ['2d6'],
+      diceList: [id],
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -283,43 +310,20 @@ describe('main — addDice', () => {
 
     (document.getElementById('dice-input') as HTMLInputElement).value = 'foo';
     (document.getElementById('dice-add') as HTMLButtonElement).click();
+    await new Promise(r => setTimeout(r, 50));
 
     expect(document.querySelectorAll('dice-row').length).toBe(1);
   });
 
-  it('ignores duplicates', async () => {
-    await saveSettings({
-      diceList: ['2d6'],
-      showAdvantage: true,
-      showDisadvantage: true,
-    });
+  it('allows adding duplicate notation', async () => {
     const init = await loadInit();
     await init();
-
-    (document.getElementById('dice-input') as HTMLInputElement).value = '2d6';
-    (document.getElementById('dice-add') as HTMLButtonElement).click();
-
-    expect(document.querySelectorAll('dice-row').length).toBe(1);
-  });
-});
-
-describe('main — removeDice', () => {
-  beforeEach(async () => {
-    vi.resetModules();
-    await clearIndexedDB();
-    localStorage.clear();
-    document.body.replaceChildren();
-    setupDOM();
-  });
-
-  it('removes a dice type when pill x is clicked', async () => {
-    const init = await loadInit();
-    await init();
-
-    expect(document.querySelectorAll('dice-row').length).toBe(3);
-    const removeBtn = document.querySelector('.dice-pill button') as HTMLButtonElement;
-    removeBtn.click();
-    expect(document.querySelectorAll('dice-row').length).toBe(2);
+    const input = document.getElementById('dice-input') as HTMLInputElement;
+    const btn = document.getElementById('dice-add') as HTMLButtonElement;
+    input.value = '2d6';
+    btn.click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(document.querySelectorAll('dice-row').length).toBe(4);
   });
 });
 
@@ -367,18 +371,17 @@ describe('main — persistence', () => {
   it('saves settings to IndexedDB on init', async () => {
     const init = await loadInit();
     await init();
-
-    // Let the fire-and-forget save complete
     await new Promise(r => setTimeout(r, 0));
     const saved = await loadSettings();
-    expect(saved.diceList).toEqual(['2d6', '2d12', '1d20']);
-    expect(saved.showAdvantage).toBe(true);
-    expect(saved.showDisadvantage).toBe(true);
+    expect(saved).not.toBeNull();
+    expect(saved!.diceList).toHaveLength(3);
+    expect(typeof saved!.diceList[0]).toBe('number');
   });
 
   it('persists after adding dice', async () => {
+    const id = await createTestDiceEntry('2d6');
     await saveSettings({
-      diceList: ['2d6'],
+      diceList: [id],
       showAdvantage: true,
       showDisadvantage: true,
     });
@@ -387,11 +390,13 @@ describe('main — persistence', () => {
 
     (document.getElementById('dice-input') as HTMLInputElement).value = '2d8';
     (document.getElementById('dice-add') as HTMLButtonElement).click();
+    await new Promise(r => setTimeout(r, 50));
 
-    // Let the fire-and-forget save complete
-    await new Promise(r => setTimeout(r, 0));
     const saved = await loadSettings();
-    expect(saved.diceList).toEqual(['2d6', '2d8']);
+    expect(saved).not.toBeNull();
+    expect(saved!.diceList).toHaveLength(2);
+    expect(typeof saved!.diceList[0]).toBe('number');
+    expect(typeof saved!.diceList[1]).toBe('number');
   });
 
   it('re-renders page when dialog closes', async () => {
@@ -406,7 +411,7 @@ describe('main — persistence', () => {
     await new Promise(r => setTimeout(r, 50));
     // Page should have re-rendered with updated thresholds
     const rangeItems = document.querySelector('dice-row')!.querySelectorAll('.dice-range-item');
-    expect(rangeItems[0].textContent).toContain('≤7');
+    expect(rangeItems[0].textContent).toContain('\u22647');
   });
 
   it('saves dice thresholds to IndexedDB when config changes via dialog', async () => {
@@ -416,8 +421,11 @@ describe('main — persistence', () => {
     // Get the dice-row element and trigger its onConfigChange callback
     const row = document.querySelector('dice-row') as any;
     if (row && row.onConfigChange) {
+      const firstConfig = row.config;
       const newConfig = {
+        id: firstConfig.id,
         count: 2, sides: 6, label: '2d6',
+        name: '2d6',
         thresholds: [6, 11],
         categories: [
           { label: 'Bad', color: '#ff0000' },
@@ -430,82 +438,27 @@ describe('main — persistence', () => {
       };
       row.onConfigChange(newConfig, 'Custom');
       await new Promise(r => setTimeout(r, 50));
-      const saved = await loadDiceThresholds('2d6');
+      const saved = await loadDiceThresholds(firstConfig.id);
       expect(saved).not.toBeNull();
       expect(saved!.presetName).toBe('Custom');
       expect(saved!.thresholds).toEqual([6, 11]);
+      expect(saved!.name).toBe('2d6');
+      expect(saved!.count).toBe(2);
+      expect(saved!.sides).toBe(6);
       expect(saved!.minMod).toBe(-1);
       expect(saved!.maxMod).toBe(3);
     }
   });
 
   it('preserves viewMode through save and load cycle', async () => {
-    await saveDiceThresholds('2d6', {
-      presetName: 'PbtA',
-      categories: [
-        { label: 'Miss', color: '#f87171' },
-        { label: 'Weak Hit', color: '#facc15' },
-        { label: 'Strong Hit', color: '#4ade80' },
-      ],
-      thresholds: [7, 10],
-      minMod: -2,
-      maxMod: 5,
-      viewMode: 'table',
-    });
-    const loaded = await loadDiceThresholds('2d6');
+    const id = await createTestDiceEntry('2d6', { viewMode: 'table' });
+    const loaded = await loadDiceThresholds(id);
     expect(loaded!.viewMode).toBe('table');
   });
 
-  it('defaults viewMode to bar when not present', async () => {
-    await saveDiceThresholds('2d6', {
-      presetName: 'PbtA',
-      categories: [{ label: 'Miss', color: '#f87171' }],
-      thresholds: [],
-      minMod: 0,
-      maxMod: 0,
-    });
-    const loaded = await loadDiceThresholds('2d6');
+  it('defaults viewMode to undefined when not present', async () => {
+    const id = await createTestDiceEntry('2d6');
+    const loaded = await loadDiceThresholds(id);
     expect(loaded!.viewMode).toBeUndefined();
-  });
-});
-
-describe('main — migration', () => {
-  beforeEach(async () => {
-    vi.resetModules();
-    await clearIndexedDB();
-    localStorage.clear();
-    document.body.replaceChildren();
-    setupDOM();
-  });
-
-  it('migrates settings from localStorage to IndexedDB', async () => {
-    const legacy: SavedSettings = {
-      diceList: ['1d4', '1d8'],
-      showAdvantage: false,
-      showDisadvantage: false,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
-
-    const init = await loadInit();
-    await init();
-
-    // Migration should have moved data to IndexedDB
-    const saved = await loadSettings();
-    expect(saved.diceList).toEqual(['1d4', '1d8']);
-    expect(saved.showAdvantage).toBe(false);
-    expect(saved.showDisadvantage).toBe(false);
-  });
-
-  it('removes localStorage key after migration', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      diceList: ['2d6'],
-      showAdvantage: true,
-      showDisadvantage: false,
-    }));
-
-    const init = await loadInit();
-    await init();
-
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 });

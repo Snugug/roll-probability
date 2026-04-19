@@ -6,107 +6,110 @@ import {
   saveSettings,
   loadDiceThresholds,
   saveDiceThresholds,
-  migrateFromLocalStorage,
+  createDiceThreshold,
+  deleteDiceThreshold,
   type DiceConfig,
+  type SavedDiceThreshold,
 } from './thresholds';
 import { renderPage } from './renderer';
 import './style.css';
 
-function buildConfig(label: string): DiceConfig {
+function buildConfig(label: string): Omit<DiceConfig, 'id'> {
   const parsed = parseDiceNotation(label)!;
   const thresholds = mapThresholds(PBTA_PRESET, parsed.count, parsed.sides);
   return {
     count: parsed.count,
     sides: parsed.sides,
     label,
+    name: label,
     thresholds,
-    categories: PBTA_PRESET.categories,
+    categories: PBTA_PRESET.categories.map(c => ({ ...c })),
     criticals: PBTA_PRESET.criticals,
     minMod: -2,
     maxMod: 5,
   };
 }
 
-async function buildConfigWithSaved(label: string): Promise<DiceConfig | null> {
-  const parsed = parseDiceNotation(label);
-  if (!parsed) return null;
+async function buildConfigWithSaved(id: number): Promise<DiceConfig | null> {
+  const saved = await loadDiceThresholds(id);
+  if (!saved) return null;
 
-  const saved = await loadDiceThresholds(label);
-  if (saved) {
-    return {
-      count: parsed.count,
-      sides: parsed.sides,
-      label,
-      thresholds: saved.thresholds,
-      categories: saved.categories,
-      criticals: saved.criticals ?? { type: 'none' },
-      presetName: saved.presetName,
-      minMod: saved.minMod ?? -2,
-      maxMod: saved.maxMod ?? 5,
-      viewMode: saved.viewMode,
-    };
-  }
+  return {
+    id: saved.id!,
+    name: saved.name,
+    count: saved.count,
+    sides: saved.sides,
+    label: saved.count + 'd' + saved.sides,
+    thresholds: saved.thresholds,
+    categories: saved.categories,
+    criticals: saved.criticals ?? { type: 'none' },
+    presetName: saved.presetName,
+    minMod: saved.minMod ?? -2,
+    maxMod: saved.maxMod ?? 5,
+    viewMode: saved.viewMode,
+  };
+}
 
-  return buildConfig(label);
+async function createAndSaveConfig(label: string): Promise<DiceConfig> {
+  const config = buildConfig(label);
+  const saved: Omit<SavedDiceThreshold, 'id'> = {
+    name: config.name,
+    count: config.count,
+    sides: config.sides,
+    presetName: 'PbtA',
+    thresholds: config.thresholds,
+    categories: config.categories,
+    criticals: config.criticals,
+    minMod: config.minMod,
+    maxMod: config.maxMod,
+  };
+  const id = await createDiceThreshold(saved);
+  return { ...config, id };
 }
 
 export async function init(): Promise<void> {
-  await migrateFromLocalStorage();
   const settings = await loadSettings();
   const diceConfigs: DiceConfig[] = [];
 
-  for (const label of settings.diceList) {
-    const config = await buildConfigWithSaved(label);
-    if (config) diceConfigs.push(config);
+  if (settings) {
+    for (const id of settings.diceList) {
+      const config = await buildConfigWithSaved(id);
+      if (config) diceConfigs.push(config);
+    }
+  } else {
+    for (const label of ['2d6', '2d12', '1d20']) {
+      const config = await createAndSaveConfig(label);
+      diceConfigs.push(config);
+    }
   }
 
-  let showAdvantage = settings.showAdvantage;
-  let showDisadvantage = settings.showDisadvantage;
+  let showAdvantage = settings?.showAdvantage ?? true;
+  let showDisadvantage = settings?.showDisadvantage ?? true;
 
   const rowsContainer = document.getElementById('dice-rows')!;
   const advToggle = document.getElementById('adv-toggle') as HTMLButtonElement;
   const disToggle = document.getElementById('dis-toggle') as HTMLButtonElement;
   const diceInput = document.getElementById('dice-input') as HTMLInputElement;
   const diceAddBtn = document.getElementById('dice-add') as HTMLButtonElement;
-  const pillsContainer = document.getElementById('dice-pills')!;
 
   advToggle.classList.toggle('active', showAdvantage);
   disToggle.classList.toggle('active', showDisadvantage);
 
   function save(): void {
     saveSettings({
-      diceList: diceConfigs.map(c => c.label),
+      diceList: diceConfigs.map(c => c.id),
       showAdvantage,
       showDisadvantage,
     });
   }
 
-  function renderPills(): void {
-    pillsContainer.replaceChildren();
-    for (let i = 0; i < diceConfigs.length; i++) {
-      const pill = document.createElement('div');
-      pill.className = 'dice-pill';
-
-      const text = document.createElement('span');
-      text.textContent = diceConfigs[i].label;
-      pill.appendChild(text);
-
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = '\u00d7';
-      const idx = i;
-      removeBtn.addEventListener('click', () => {
-        diceConfigs.splice(idx, 1);
-        update();
-      });
-      pill.appendChild(removeBtn);
-
-      pillsContainer.appendChild(pill);
-    }
-  }
-
   function handleConfigChange(index: number, config: DiceConfig, presetName: string): void {
     diceConfigs[index] = config;
-    saveDiceThresholds(config.label, {
+    saveDiceThresholds({
+      id: config.id,
+      name: config.name,
+      count: config.count,
+      sides: config.sides,
       presetName,
       categories: config.categories,
       thresholds: config.thresholds,
@@ -117,17 +120,23 @@ export async function init(): Promise<void> {
     }).catch(() => {});
   }
 
+  function handleDelete(index: number): void {
+    const config = diceConfigs[index];
+    deleteDiceThreshold(config.id).catch(() => {});
+    diceConfigs.splice(index, 1);
+    update();
+  }
+
   function handleDialogClose(): void {
     update();
   }
 
   function update(): void {
-    renderPage(rowsContainer, diceConfigs, showAdvantage, showDisadvantage, handleConfigChange, handleDialogClose);
-    renderPills();
+    renderPage(rowsContainer, diceConfigs, showAdvantage, showDisadvantage, handleConfigChange, handleDialogClose, handleDelete);
     save();
   }
 
-  function addDice(): void {
+  async function addDice(): Promise<void> {
     const raw = diceInput.value.trim().toLowerCase();
     if (!raw) return;
 
@@ -135,14 +144,13 @@ export async function init(): Promise<void> {
     if (!parsed) return;
 
     const label = parsed.count + 'd' + parsed.sides;
-    if (diceConfigs.some(c => c.label === label)) return;
-
-    diceConfigs.push(buildConfig(label)!);
+    const config = await createAndSaveConfig(label);
+    diceConfigs.push(config);
     diceInput.value = '';
     update();
   }
 
-  diceAddBtn.addEventListener('click', addDice);
+  diceAddBtn.addEventListener('click', () => { addDice(); });
   diceInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') addDice();
   });

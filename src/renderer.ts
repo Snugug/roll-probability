@@ -17,7 +17,8 @@ export function renderPage(
   showAdvantage: boolean,
   showDisadvantage: boolean,
   onConfigChange?: (index: number, config: DiceConfig, presetName: string) => void,
-  onDialogClose?: () => void
+  onDialogClose?: () => void,
+  onDelete?: (index: number) => void
 ): void {
   container.replaceChildren();
 
@@ -35,6 +36,10 @@ export function renderPage(
     }
     if (onDialogClose) {
       row.onDialogClose = onDialogClose;
+    }
+    if (onDelete) {
+      const idx = i;
+      row.onDelete = () => { onDelete(idx); };
     }
     container.appendChild(row);
   }

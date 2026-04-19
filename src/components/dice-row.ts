@@ -12,6 +12,7 @@ export class DiceRowElement extends HTMLElement {
   showDisadvantage = true;
   onConfigChange?: (config: DiceConfig, presetName: string) => void;
   onDialogClose?: () => void;
+  onDelete?: () => void;
 
   _dialog!: HTMLDialogElement;
   _state!: ThresholdEditorState;
