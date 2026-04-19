@@ -5,3 +5,4 @@ dist
 .playwright-mcp
 docs/superpowers
 .worktrees
+.DS_Store
