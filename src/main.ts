@@ -71,12 +71,19 @@ export async function init(): Promise<void> {
   const settings = await loadSettings();
   const diceConfigs: DiceConfig[] = [];
 
-  if (settings) {
+  // Detect stale string-based diceList from a pre-v2 database whose
+  // migration didn't fully convert settings to numeric IDs.
+  const hasValidDiceList = settings
+    && settings.diceList.length > 0
+    && settings.diceList.every(id => typeof id === 'number');
+
+  if (hasValidDiceList) {
     for (const id of settings.diceList) {
       const config = await buildConfigWithSaved(id);
       if (config) diceConfigs.push(config);
     }
   } else {
+    // Fresh install or stale string diceList: create defaults
     for (const label of ['2d6', '2d12', '1d20']) {
       const config = await createAndSaveConfig(label);
       diceConfigs.push(config);

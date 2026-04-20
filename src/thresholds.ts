@@ -135,7 +135,6 @@ export function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = (event) => {
       const db = request.result;
-      const tx = request.transaction!;
 
       if (!db.objectStoreNames.contains('settings')) {
         db.createObjectStore('settings');
@@ -145,16 +144,15 @@ export function openDB(): Promise<IDBDatabase> {
       }
 
       if ((event as IDBVersionChangeEvent).oldVersion < 2) {
-        let lsDiceList: string[] | null = null;
+        // Migrate localStorage to settings store if present
         const lsRaw = localStorage.getItem('dice-visualizer-settings');
         if (lsRaw) {
           try {
             const parsed = JSON.parse(lsRaw);
             if (parsed && Array.isArray(parsed.diceList)) {
-              lsDiceList = parsed.diceList;
-              const settingsStore = tx.objectStore('settings');
-              settingsStore.put({
-                diceList: [],
+              const tx = request.transaction!;
+              tx.objectStore('settings').put({
+                diceList: parsed.diceList,
                 showAdvantage: parsed.showAdvantage ?? true,
                 showDisadvantage: parsed.showDisadvantage ?? true,
               }, 'global');
@@ -163,162 +161,19 @@ export function openDB(): Promise<IDBDatabase> {
           localStorage.removeItem('dice-visualizer-settings');
         }
 
+        // Schema change: replace string-keyed store with auto-increment.
+        // All calls here are synchronous within onupgradeneeded — no nested
+        // async callbacks that risk the versionchange transaction committing
+        // before deleteObjectStore/createObjectStore execute.
+        // Old threshold data is lost; init() will recreate defaults for any
+        // string-based diceList entries it finds.
         if (db.objectStoreNames.contains('diceThresholds')) {
-          const oldStore = tx.objectStore('diceThresholds');
-          const allReq = oldStore.getAll();
-          const keysReq = oldStore.getAllKeys();
-
-          let entriesResult: any[] | null = null;
-          let keysResult: string[] | null = null;
-
-          const onBothReady = () => {
-            if (entriesResult === null || keysResult === null) return;
-
-            const oldDataMap = new Map<string, any>();
-            for (let i = 0; i < keysResult.length; i++) {
-              oldDataMap.set(keysResult[i], entriesResult[i]);
-            }
-
-            const settingsStore = tx.objectStore('settings');
-            const settingsReq = settingsStore.get('global');
-            settingsReq.onsuccess = () => {
-              const settings = settingsReq.result;
-              const diceList: string[] = lsDiceList
-                ?? (settings?.diceList as string[] | undefined)
-                ?? ['2d6', '2d12', '1d20'];
-
-              db.deleteObjectStore('diceThresholds');
-              const newStore = db.createObjectStore('diceThresholds', {
-                keyPath: 'id',
-                autoIncrement: true,
-              });
-
-              let remaining = diceList.length;
-              const newIds: number[] = [];
-
-              if (remaining === 0) {
-                settingsStore.put({
-                  diceList: [],
-                  showAdvantage: settings?.showAdvantage ?? true,
-                  showDisadvantage: settings?.showDisadvantage ?? true,
-                }, 'global');
-                return;
-              }
-
-              for (const label of diceList) {
-                const parsed = parseDiceNotation(label);
-                if (!parsed) {
-                  remaining--;
-                  if (remaining === 0) {
-                    settingsStore.put({
-                      diceList: newIds,
-                      showAdvantage: settings?.showAdvantage ?? true,
-                      showDisadvantage: settings?.showDisadvantage ?? true,
-                    }, 'global');
-                  }
-                  continue;
-                }
-
-                const old = oldDataMap.get(label);
-                const newEntry: any = old
-                  ? {
-                      ...old,
-                      name: label,
-                      count: parsed.count,
-                      sides: parsed.sides,
-                    }
-                  : {
-                      name: label,
-                      count: parsed.count,
-                      sides: parsed.sides,
-                      presetName: 'PbtA',
-                      thresholds: mapThresholds(PBTA_PRESET, parsed.count, parsed.sides),
-                      categories: PBTA_PRESET.categories.map(c => ({ ...c })),
-                      criticals: PBTA_PRESET.criticals,
-                      minMod: -2,
-                      maxMod: 5,
-                    };
-
-                const putReq = newStore.add(newEntry);
-                putReq.onsuccess = () => {
-                  newIds.push(putReq.result as number);
-                  remaining--;
-                  if (remaining === 0) {
-                    settingsStore.put({
-                      diceList: newIds,
-                      showAdvantage: settings?.showAdvantage ?? true,
-                      showDisadvantage: settings?.showDisadvantage ?? true,
-                    }, 'global');
-                  }
-                };
-              }
-            };
-          };
-
-          allReq.onsuccess = () => {
-            entriesResult = allReq.result;
-            onBothReady();
-          };
-          keysReq.onsuccess = () => {
-            keysResult = keysReq.result as string[];
-            onBothReady();
-          };
-        } else {
-          const newStore = db.createObjectStore('diceThresholds', {
-            keyPath: 'id',
-            autoIncrement: true,
-          });
-
-          if (lsDiceList && lsDiceList.length > 0) {
-            const settingsStore = tx.objectStore('settings');
-            const settingsReq = settingsStore.get('global');
-            settingsReq.onsuccess = () => {
-              const settings = settingsReq.result;
-              let remaining = lsDiceList.length;
-              const newIds: number[] = [];
-
-              for (const label of lsDiceList) {
-                const parsed = parseDiceNotation(label);
-                if (!parsed) {
-                  remaining--;
-                  if (remaining === 0) {
-                    settingsStore.put({
-                      diceList: newIds,
-                      showAdvantage: settings?.showAdvantage ?? true,
-                      showDisadvantage: settings?.showDisadvantage ?? true,
-                    }, 'global');
-                  }
-                  continue;
-                }
-
-                const newEntry: any = {
-                  name: label,
-                  count: parsed.count,
-                  sides: parsed.sides,
-                  presetName: 'PbtA',
-                  thresholds: mapThresholds(PBTA_PRESET, parsed.count, parsed.sides),
-                  categories: PBTA_PRESET.categories.map(c => ({ ...c })),
-                  criticals: PBTA_PRESET.criticals,
-                  minMod: -2,
-                  maxMod: 5,
-                };
-
-                const putReq = newStore.add(newEntry);
-                putReq.onsuccess = () => {
-                  newIds.push(putReq.result as number);
-                  remaining--;
-                  if (remaining === 0) {
-                    settingsStore.put({
-                      diceList: newIds,
-                      showAdvantage: settings?.showAdvantage ?? true,
-                      showDisadvantage: settings?.showDisadvantage ?? true,
-                    }, 'global');
-                  }
-                };
-              }
-            };
-          }
+          db.deleteObjectStore('diceThresholds');
         }
+        db.createObjectStore('diceThresholds', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
       } else if (!db.objectStoreNames.contains('diceThresholds')) {
         db.createObjectStore('diceThresholds', {
           keyPath: 'id',

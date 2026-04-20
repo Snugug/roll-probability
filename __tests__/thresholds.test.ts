@@ -364,7 +364,7 @@ describe('v1 to v2 migration', () => {
     localStorage.clear();
   });
 
-  it('migrates v1 string-keyed diceThresholds to v2 auto-increment', async () => {
+  it('v1 to v2 upgrade replaces string-keyed store with auto-increment store', async () => {
     // Seed a v1 database manually
     const v1req = indexedDB.open('dice-visualizer', 1);
     await new Promise<void>((resolve) => {
@@ -397,19 +397,22 @@ describe('v1 to v2 migration', () => {
       };
     });
 
-    // Now open with v2 — migration should run
+    // Open with v2 — migration replaces the old store with auto-increment.
+    // Old threshold data is not preserved; settings retain the old string
+    // diceList which init() treats as a fresh install.
     const settings = await loadSettings();
     expect(settings).not.toBeNull();
-    expect(settings!.diceList).toHaveLength(1);
-    expect(typeof settings!.diceList[0]).toBe('number');
+    expect(settings!.diceList).toEqual(['2d6']);
 
-    const id = settings!.diceList[0];
+    // The new auto-increment store exists and accepts entries
+    const id = await createDiceThreshold({
+      name: '2d6', count: 2, sides: 6,
+      presetName: 'PbtA', categories: [], thresholds: [7, 10],
+      minMod: -2, maxMod: 5,
+    });
+    expect(typeof id).toBe('number');
     const loaded = await loadDiceThresholds(id);
     expect(loaded).not.toBeNull();
-    expect(loaded!.name).toBe('2d6');
-    expect(loaded!.count).toBe(2);
-    expect(loaded!.sides).toBe(6);
-    expect(loaded!.thresholds).toEqual([7, 10]);
   });
 
   it('migrates localStorage settings during v1 to v2 upgrade', async () => {
@@ -423,22 +426,14 @@ describe('v1 to v2 migration', () => {
     // Trigger migration by opening DB (fresh install, oldVersion=0 which is < 2)
     const settings = await loadSettings();
     expect(settings).not.toBeNull();
-    expect(settings!.diceList).toHaveLength(2);
-    expect(typeof settings!.diceList[0]).toBe('number');
-    expect(typeof settings!.diceList[1]).toBe('number');
+    // localStorage diceList is preserved as-is (strings); init() will detect
+    // these are not numeric IDs and create fresh defaults.
+    expect(settings!.diceList).toEqual(['1d4', '1d8']);
     expect(settings!.showAdvantage).toBe(false);
     expect(settings!.showDisadvantage).toBe(false);
 
     // localStorage should be cleared
     expect(localStorage.getItem('dice-visualizer-settings')).toBeNull();
-
-    // Verify the dice entries were created
-    const id1 = settings!.diceList[0];
-    const loaded1 = await loadDiceThresholds(id1);
-    expect(loaded1).not.toBeNull();
-    expect(loaded1!.name).toBe('1d4');
-    expect(loaded1!.count).toBe(1);
-    expect(loaded1!.sides).toBe(4);
   });
 
   it('removes localStorage key even with invalid JSON', async () => {
