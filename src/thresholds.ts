@@ -128,13 +128,14 @@ export function mapCriticals(
 }
 
 const DB_NAME = 'dice-visualizer';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = (event) => {
       const db = request.result;
+      const oldVersion = (event as IDBVersionChangeEvent).oldVersion;
 
       if (!db.objectStoreNames.contains('settings')) {
         db.createObjectStore('settings');
@@ -143,7 +144,7 @@ export function openDB(): Promise<IDBDatabase> {
         db.createObjectStore('customPresets', { keyPath: 'id', autoIncrement: true });
       }
 
-      if ((event as IDBVersionChangeEvent).oldVersion < 2) {
+      if (oldVersion < 2) {
         // Migrate localStorage to settings store if present
         const lsRaw = localStorage.getItem('dice-visualizer-settings');
         if (lsRaw) {
@@ -160,26 +161,19 @@ export function openDB(): Promise<IDBDatabase> {
           } catch { /* ignore invalid JSON */ }
           localStorage.removeItem('dice-visualizer-settings');
         }
-
-        // Schema change: replace string-keyed store with auto-increment.
-        // All calls here are synchronous within onupgradeneeded — no nested
-        // async callbacks that risk the versionchange transaction committing
-        // before deleteObjectStore/createObjectStore execute.
-        // Old threshold data is lost; init() will recreate defaults for any
-        // string-based diceList entries it finds.
-        if (db.objectStoreNames.contains('diceThresholds')) {
-          db.deleteObjectStore('diceThresholds');
-        }
-        db.createObjectStore('diceThresholds', {
-          keyPath: 'id',
-          autoIncrement: true,
-        });
-      } else if (!db.objectStoreNames.contains('diceThresholds')) {
-        db.createObjectStore('diceThresholds', {
-          keyPath: 'id',
-          autoIncrement: true,
-        });
       }
+
+      // Ensure diceThresholds uses auto-increment keyPath.
+      // This handles v1→v3 (old string-keyed store), v2→v3 (store may
+      // have been left without keyPath by a buggy v2 migration), and
+      // fresh installs.
+      if (db.objectStoreNames.contains('diceThresholds')) {
+        db.deleteObjectStore('diceThresholds');
+      }
+      db.createObjectStore('diceThresholds', {
+        keyPath: 'id',
+        autoIncrement: true,
+      });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
