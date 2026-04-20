@@ -7,6 +7,8 @@ import {
   type DiceConfig,
   type ThresholdPreset,
   type SavedCustomPreset,
+  type AdvantageMethod,
+  type DisadvantageMethod,
 } from './thresholds';
 
 export type EditorChangeKind = 'value' | 'structure';
@@ -38,6 +40,8 @@ export class ThresholdEditorState {
     this.config.thresholds = mapThresholds(preset, this.config.count, this.config.sides);
     this.config.categories = preset.categories.map(c => ({ ...c }));
     this.config.criticals = mapCriticals(preset, this.config.count, this.config.sides);
+    this.config.advantageMethod = preset.advantageMethod;
+    this.config.disadvantageMethod = preset.disadvantageMethod;
     this._onChange('structure');
   }
 
@@ -46,6 +50,8 @@ export class ThresholdEditorState {
     this.config.thresholds = [...custom.thresholds];
     this.config.categories = custom.categories.map(c => ({ ...c }));
     this.config.criticals = custom.criticals ?? { type: 'none' };
+    this.config.advantageMethod = custom.advantageMethod ?? 'plus-one-drop-low';
+    this.config.disadvantageMethod = custom.disadvantageMethod ?? 'plus-one-drop-high';
     this._onChange('structure');
   }
 
@@ -72,6 +78,16 @@ export class ThresholdEditorState {
     if (this.config.maxMod < this.config.minMod) {
       this.config.minMod = this.config.maxMod;
     }
+    this._persistAndNotify('value');
+  }
+
+  setAdvantageMethod(method: AdvantageMethod): void {
+    this.config.advantageMethod = method;
+    this._persistAndNotify('value');
+  }
+
+  setDisadvantageMethod(method: DisadvantageMethod): void {
+    this.config.disadvantageMethod = method;
     this._persistAndNotify('value');
   }
 
@@ -142,6 +158,8 @@ export class ThresholdEditorState {
       thresholds: [...this.config.thresholds],
       categories: this.config.categories.map(c => ({ ...c })),
       criticals: this.config.criticals,
+      advantageMethod: this.config.advantageMethod,
+      disadvantageMethod: this.config.disadvantageMethod,
     };
 
     saveCustomPreset(newPreset).then(savedId => {
@@ -172,6 +190,8 @@ export class ThresholdEditorState {
         custom.thresholds = [...this.config.thresholds];
         custom.categories = this.config.categories.map(c => ({ ...c }));
         custom.criticals = this.config.criticals;
+        custom.advantageMethod = this.config.advantageMethod;
+        custom.disadvantageMethod = this.config.disadvantageMethod;
         saveCustomPreset(custom).catch(() => {});
       }
     }
