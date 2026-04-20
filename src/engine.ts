@@ -1,5 +1,5 @@
 export type RollMode = 'normal' | 'advantage' | 'disadvantage';
-export type AdvantageMethod = 'none' | 'plus-one-drop-low';
+export type AdvantageMethod = 'none' | 'plus-one-drop-low' | 'double-dice';
 export type DisadvantageMethod = 'none' | 'plus-one-drop-high';
 
 export type CriticalConfig =
@@ -219,6 +219,13 @@ export function computeDisadvantageProbabilities(
   return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropHighest, criticals, keepDropHighest);
 }
 
+export function computeDoubleDiceProbabilities(
+  count: number, sides: number, thresholds: number[], modifier: number,
+  criticals: CriticalConfig = { type: 'none' }
+): ProbabilityResult {
+  return classifyOutcomes(count * 2, sides, thresholds, modifier, sumAll, criticals);
+}
+
 export function computeProbabilities(
   count: number, sides: number, thresholds: number[], modifier: number, mode: RollMode,
   criticals: CriticalConfig = { type: 'none' },
@@ -230,6 +237,7 @@ export function computeProbabilities(
       return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
     case 'advantage':
       if (advantageMethod === 'none') return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
+      if (advantageMethod === 'double-dice') return computeDoubleDiceProbabilities(count, sides, thresholds, modifier, criticals);
       return computeAdvantageProbabilities(count, sides, thresholds, modifier, criticals);
     case 'disadvantage':
       if (disadvantageMethod === 'none') return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);

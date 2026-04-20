@@ -3,6 +3,7 @@ import {
   computeNormalProbabilities,
   computeAdvantageProbabilities,
   computeDisadvantageProbabilities,
+  computeDoubleDiceProbabilities,
   computeProbabilities,
   parseDiceNotation,
 } from '../src/engine';
@@ -100,6 +101,39 @@ describe('computeDisadvantageProbabilities', () => {
   });
 });
 
+describe('computeDoubleDiceProbabilities', () => {
+  it('1d6 doubled matches normal 2d6', () => {
+    const doubled = computeDoubleDiceProbabilities(1, 6, [7, 10], 0);
+    const normal = computeNormalProbabilities(2, 6, [7, 10], 0);
+    expect(doubled.categories).toEqual(normal.categories);
+  });
+
+  it('1d6 doubled with modifier matches normal 2d6 with same modifier', () => {
+    const doubled = computeDoubleDiceProbabilities(1, 6, [7, 10], 2);
+    const normal = computeNormalProbabilities(2, 6, [7, 10], 2);
+    expect(doubled.categories).toEqual(normal.categories);
+  });
+
+  it('sums to 100', () => {
+    const result = computeDoubleDiceProbabilities(2, 6, [7, 10], 0);
+    const sum = result.categories.reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(100, 10);
+  });
+
+  it('2d6 doubled produces 4d6 distribution', () => {
+    const doubled = computeDoubleDiceProbabilities(2, 6, [7, 10], 0);
+    const normal = computeNormalProbabilities(4, 6, [7, 10], 0);
+    expect(doubled.categories).toEqual(normal.categories);
+  });
+
+  it('critical detection works with doubled dice pool', () => {
+    const result = computeDoubleDiceProbabilities(1, 6, [7, 10], 0, { type: 'doubles', color: '#f00', label: 'Crit' });
+    const totalDoubles = result.critHitPerCategory.reduce((a, b) => a + b, 0);
+    expect(totalDoubles).toBeGreaterThan(0);
+    expect(result.categories.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
+  });
+});
+
 describe('computeProbabilities', () => {
   it('dispatches to normal', () => {
     const direct = computeNormalProbabilities(2, 6, [7, 10], 0);
@@ -142,6 +176,12 @@ describe('computeProbabilities with method gating', () => {
   it('returns disadvantage results when disadvantage method is plus-one-drop-high', () => {
     const direct = computeDisadvantageProbabilities(2, 6, [7, 10], 0);
     const result = computeProbabilities(2, 6, [7, 10], 0, 'disadvantage', { type: 'none' }, 'plus-one-drop-low', 'plus-one-drop-high');
+    expect(result.categories).toEqual(direct.categories);
+  });
+
+  it('dispatches to double-dice when advantage method is double-dice', () => {
+    const direct = computeDoubleDiceProbabilities(2, 6, [7, 10], 0);
+    const result = computeProbabilities(2, 6, [7, 10], 0, 'advantage', { type: 'none' }, 'double-dice');
     expect(result.categories).toEqual(direct.categories);
   });
 });
