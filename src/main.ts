@@ -8,6 +8,8 @@ import {
   saveDiceThresholds,
   createDiceThreshold,
   deleteDiceThreshold,
+  loadCustomPresets,
+  syncConfigsToPresets,
   type DiceConfig,
   type SavedDiceThreshold,
 } from './thresholds';
@@ -198,8 +200,27 @@ export async function init(): Promise<void> {
     update();
   }
 
-  function handleDialogClose(): void {
+  async function handleDialogClose(): Promise<void> {
     const scrollY = window.scrollY;
+    const presets = await loadCustomPresets();
+    syncConfigsToPresets(diceConfigs, presets);
+    for (const config of diceConfigs) {
+      saveDiceThresholds({
+        id: config.id,
+        name: config.name,
+        count: config.count,
+        sides: config.sides,
+        presetName: config.presetName ?? PBTA_PRESET.name,
+        categories: config.categories,
+        thresholds: config.thresholds,
+        criticals: config.criticals,
+        minMod: config.minMod,
+        maxMod: config.maxMod,
+        viewMode: config.viewMode,
+        advantageMethod: config.advantageMethod,
+        disadvantageMethod: config.disadvantageMethod,
+      }).catch(() => {});
+    }
     update();
     window.scrollTo(0, scrollY);
   }

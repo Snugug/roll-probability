@@ -5,6 +5,8 @@ import {
   loadDiceThresholds,
   createDiceThreshold,
   saveDiceThresholds,
+  saveCustomPreset,
+  loadCustomPresets,
 } from '../src/thresholds';
 
 function setupDOM(): void {
@@ -422,6 +424,50 @@ describe('main — persistence', () => {
     // Page should have re-rendered with updated thresholds
     const rangeItems = document.querySelector('dice-row')!.querySelectorAll('.dice-range-item');
     expect(rangeItems[0].textContent).toContain('\u22647');
+  });
+
+  it('syncs preset-level fields to all dice using the same custom preset on dialog close', async () => {
+    const presetId = await saveCustomPreset({
+      name: 'Shared',
+      referenceDie: '2d6',
+      thresholds: [7, 10],
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Weak Hit', color: '#facc15' },
+        { label: 'Strong Hit', color: '#4ade80' },
+      ],
+      criticals: { type: 'none' },
+      advantageMethod: 'plus-one-drop-low',
+      disadvantageMethod: 'plus-one-drop-high',
+      minMod: -2,
+      maxMod: 5,
+    });
+
+    const id1 = await createTestDiceEntry('2d6', { presetName: 'Shared' });
+    const id2 = await createTestDiceEntry('2d6', { presetName: 'Shared' });
+    await saveSettings({ diceList: [id1, id2], showAdvantage: true, showDisadvantage: true });
+
+    const init = await loadInit();
+    await init();
+    await new Promise(r => setTimeout(r, 50));
+
+    const rows = document.querySelectorAll('dice-row');
+    const row1 = rows[0] as any;
+
+    // Edit the preset through row1's dialog: change advantage method
+    row1._state.customPresets = await loadCustomPresets();
+    row1._state.switchToCustomPreset(row1._state.customPresets.find((p: any) => p.name === 'Shared'));
+    row1._state.setAdvantageMethod('double-dice');
+    row1._state.updateMinMod(-5);
+
+    // Close dialog — triggers sync
+    await row1.onDialogClose();
+    await new Promise(r => setTimeout(r, 50));
+
+    // Row2 should now have the updated preset values
+    const row2 = document.querySelectorAll('dice-row')[1] as any;
+    expect(row2.config.advantageMethod).toBe('double-dice');
+    expect(row2.config.minMod).toBe(-5);
   });
 
   it('saves dice thresholds to IndexedDB when config changes via dialog', async () => {
