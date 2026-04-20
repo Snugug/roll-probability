@@ -1,5 +1,5 @@
-import { parseDiceNotation, type CriticalConfig } from './engine';
-export type { CriticalConfig } from './engine';
+import { parseDiceNotation, type CriticalConfig, type AdvantageMethod, type DisadvantageMethod } from './engine';
+export type { CriticalConfig, AdvantageMethod, DisadvantageMethod } from './engine';
 
 export interface SavedSettings {
   diceList: number[];
@@ -19,6 +19,8 @@ export interface SavedDiceThreshold {
   minMod: number;
   maxMod: number;
   viewMode?: 'bar' | 'table';
+  advantageMethod?: AdvantageMethod;
+  disadvantageMethod?: DisadvantageMethod;
 }
 
 export interface SavedCustomPreset {
@@ -28,6 +30,8 @@ export interface SavedCustomPreset {
   thresholds: number[];
   categories: ThresholdCategory[];
   criticals?: CriticalConfig;
+  advantageMethod?: AdvantageMethod;
+  disadvantageMethod?: DisadvantageMethod;
 }
 
 export interface ThresholdCategory {
@@ -41,6 +45,8 @@ export interface ThresholdPreset {
   thresholds: number[];
   categories: ThresholdCategory[];
   criticals: CriticalConfig;
+  advantageMethod: AdvantageMethod;
+  disadvantageMethod: DisadvantageMethod;
 }
 
 export interface DiceConfig {
@@ -56,6 +62,8 @@ export interface DiceConfig {
   minMod: number;
   maxMod: number;
   viewMode?: 'bar' | 'table';
+  advantageMethod: AdvantageMethod;
+  disadvantageMethod: DisadvantageMethod;
 }
 
 export const PBTA_PRESET: ThresholdPreset = {
@@ -68,6 +76,8 @@ export const PBTA_PRESET: ThresholdPreset = {
     { label: 'Strong Hit', color: '#4ade80' },
   ],
   criticals: { type: 'none' },
+  advantageMethod: 'plus-one-drop-low',
+  disadvantageMethod: 'plus-one-drop-high',
 };
 
 export const DND_PRESET: ThresholdPreset = {
@@ -84,6 +94,8 @@ export const DND_PRESET: ThresholdPreset = {
     { label: 'Nearly Impossible', color: '#a855f7' },
   ],
   criticals: { type: 'natural', hit: 20, miss: 1 },
+  advantageMethod: 'plus-one-drop-low',
+  disadvantageMethod: 'plus-one-drop-high',
 };
 
 export const BUILTIN_PRESETS: ThresholdPreset[] = [PBTA_PRESET, DND_PRESET];

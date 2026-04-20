@@ -53,6 +53,16 @@ describe('built-in presets', () => {
       expect(DND_PRESET.thresholds[i]).toBeGreaterThan(DND_PRESET.thresholds[i - 1]);
     }
   });
+
+  it('PbtA preset has advantage/disadvantage methods', () => {
+    expect(PBTA_PRESET.advantageMethod).toBe('plus-one-drop-low');
+    expect(PBTA_PRESET.disadvantageMethod).toBe('plus-one-drop-high');
+  });
+
+  it('D&D preset has advantage/disadvantage methods', () => {
+    expect(DND_PRESET.advantageMethod).toBe('plus-one-drop-low');
+    expect(DND_PRESET.disadvantageMethod).toBe('plus-one-drop-high');
+  });
 });
 
 describe('mapThresholds', () => {

@@ -1,4 +1,6 @@
 export type RollMode = 'normal' | 'advantage' | 'disadvantage';
+export type AdvantageMethod = 'none' | 'plus-one-drop-low';
+export type DisadvantageMethod = 'none' | 'plus-one-drop-high';
 
 export type CriticalConfig =
   | { type: 'none' }
