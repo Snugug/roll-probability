@@ -222,11 +222,11 @@ export class DiceRowElement extends HTMLElement {
     const previewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
     if (this.config.viewMode === 'table') {
       const tableView = document.createElement('dice-table') as DiceTableElement;
-      tableView.update(previewData, this.config, this.showAdvantage, this.showDisadvantage);
+      tableView.update(previewData, this.config, this._effectiveShowAdvantage, this._effectiveShowDisadvantage);
       previewContainer.appendChild(tableView);
     } else {
       const barView = document.createElement('bar-chart-view') as BarChartView;
-      barView.update(previewData, this.config, this.showAdvantage, this.showDisadvantage);
+      barView.update(previewData, this.config, this._effectiveShowAdvantage, this._effectiveShowDisadvantage);
       previewContainer.appendChild(barView);
     }
   }
