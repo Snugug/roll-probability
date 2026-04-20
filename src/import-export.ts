@@ -2,6 +2,9 @@ import {
   loadSettings,
   loadCustomPresets,
   openDB,
+  saveSettings,
+  saveCustomPreset,
+  createDiceThreshold,
   type SavedDiceThreshold,
   type SavedCustomPreset,
 } from './thresholds';
@@ -145,4 +148,47 @@ export async function importConfig(file: File): Promise<ImportResult> {
   }
 
   return { ok: true, data: parsed };
+}
+
+async function clearAllStores(): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction(['settings', 'diceThresholds', 'customPresets'], 'readwrite');
+  tx.objectStore('settings').clear();
+  tx.objectStore('diceThresholds').clear();
+  tx.objectStore('customPresets').clear();
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+
+export async function applyImport(data: ExportData): Promise<void> {
+  await clearAllStores();
+
+  // Write custom presets (new auto-increment IDs)
+  for (const preset of data.customPresets) {
+    const { id, ...rest } = preset;
+    await saveCustomPreset(rest as SavedCustomPreset);
+  }
+
+  // Write dice configs and build old-to-new ID mapping
+  const idMap = new Map<number, number>();
+  for (const die of data.dice) {
+    const { id: oldId, ...rest } = die;
+    const newId = await createDiceThreshold(rest);
+    if (oldId !== undefined) {
+      idMap.set(oldId, newId);
+    }
+  }
+
+  // Reconstruct diceList with new IDs, preserving order
+  const newDiceList = data.settings.diceList
+    .map(oldId => idMap.get(oldId))
+    .filter((id): id is number => id !== undefined);
+
+  await saveSettings({
+    diceList: newDiceList,
+    showAdvantage: data.settings.showAdvantage,
+    showDisadvantage: data.settings.showDisadvantage,
+  });
 }

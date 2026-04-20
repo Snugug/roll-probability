@@ -234,3 +234,135 @@ describe('importConfig', () => {
     if (!result.ok) expect(result.error).toBe('Something went wrong');
   });
 });
+
+describe('applyImport', () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    await clearIndexedDB();
+  });
+
+  it('writes dice, presets, and settings to IndexedDB with new IDs', async () => {
+    const { applyImport } = await import('../src/import-export');
+    const data = {
+      version: 4,
+      settings: { diceList: [100, 200], showAdvantage: false, showDisadvantage: true },
+      dice: [
+        {
+          id: 100,
+          name: '2d6',
+          count: 2,
+          sides: 6,
+          presetName: 'PbtA',
+          thresholds: [7, 10],
+          categories: [
+            { label: 'Miss', color: '#f87171' },
+            { label: 'Weak Hit', color: '#facc15' },
+            { label: 'Strong Hit', color: '#4ade80' },
+          ],
+          minMod: -2,
+          maxMod: 5,
+        },
+        {
+          id: 200,
+          name: '1d20',
+          count: 1,
+          sides: 20,
+          presetName: 'D&D',
+          thresholds: [5, 10, 15, 20, 25, 30],
+          categories: [
+            { label: 'Trivial', color: '#94a3b8' },
+            { label: 'Very Easy', color: '#4ade80' },
+            { label: 'Easy', color: '#22d3ee' },
+            { label: 'Medium', color: '#facc15' },
+            { label: 'Hard', color: '#f97316' },
+            { label: 'Very Hard', color: '#ef4444' },
+            { label: 'Nearly Impossible', color: '#a855f7' },
+          ],
+          minMod: -2,
+          maxMod: 5,
+        },
+      ],
+      customPresets: [
+        {
+          id: 50,
+          name: 'My Preset',
+          referenceDie: '2d6',
+          thresholds: [6, 9],
+          categories: [
+            { label: 'A', color: '#aaa' },
+            { label: 'B', color: '#bbb' },
+            { label: 'C', color: '#ccc' },
+          ],
+        },
+      ],
+    };
+
+    await applyImport(data);
+
+    const settings = await loadSettings();
+    expect(settings).not.toBeNull();
+    expect(settings!.diceList).toHaveLength(2);
+    expect(settings!.showAdvantage).toBe(false);
+    expect(settings!.showDisadvantage).toBe(true);
+
+    // Verify dice were written (with new IDs)
+    const newId1 = settings!.diceList[0];
+    const newId2 = settings!.diceList[1];
+    const die1 = await loadDiceThresholds(newId1);
+    const die2 = await loadDiceThresholds(newId2);
+    expect(die1!.name).toBe('2d6');
+    expect(die2!.name).toBe('1d20');
+
+    // Verify custom presets were written
+    const presets = await loadCustomPresets();
+    expect(presets).toHaveLength(1);
+    expect(presets[0].name).toBe('My Preset');
+  });
+
+  it('clears existing data before writing', async () => {
+    // Pre-populate DB
+    const existingId = await createDiceThreshold({
+      name: 'old',
+      count: 1,
+      sides: 4,
+      presetName: 'PbtA',
+      thresholds: [3],
+      categories: [{ label: 'A', color: '#aaa' }, { label: 'B', color: '#bbb' }],
+      minMod: -2,
+      maxMod: 5,
+    });
+    await saveSettings({ diceList: [existingId], showAdvantage: true, showDisadvantage: true });
+
+    const { applyImport } = await import('../src/import-export');
+    await applyImport({
+      version: 4,
+      settings: { diceList: [1], showAdvantage: false, showDisadvantage: false },
+      dice: [{
+        id: 1,
+        name: 'new',
+        count: 3,
+        sides: 8,
+        presetName: 'PbtA',
+        thresholds: [7, 10],
+        categories: [
+          { label: 'Miss', color: '#f87171' },
+          { label: 'Weak Hit', color: '#facc15' },
+          { label: 'Strong Hit', color: '#4ade80' },
+        ],
+        minMod: -2,
+        maxMod: 5,
+      }],
+      customPresets: [],
+    });
+
+    // Old data should be gone
+    const oldDie = await loadDiceThresholds(existingId);
+    expect(oldDie).toBeNull();
+
+    // New data should be present
+    const settings = await loadSettings();
+    expect(settings!.diceList).toHaveLength(1);
+    const newDie = await loadDiceThresholds(settings!.diceList[0]);
+    expect(newDie!.name).toBe('new');
+  });
+});
