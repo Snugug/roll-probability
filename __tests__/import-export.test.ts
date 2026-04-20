@@ -147,6 +147,34 @@ describe('importConfig', () => {
     if (!result.ok) expect(result.error).toBe('Not a valid dice config file');
   });
 
+  it('rejects customPresets with invalid thresholds type', async () => {
+    const { importConfig } = await import('../src/import-export');
+    const data = {
+      version: 4,
+      settings: { diceList: [], showAdvantage: true, showDisadvantage: true },
+      dice: [],
+      customPresets: [{ name: 'Partial', referenceDie: '2d6', thresholds: 'not-array' }],
+    };
+    const file = new File([JSON.stringify(data)], 'bad.json', { type: 'application/json' });
+    const result = await importConfig(file);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toBe('Not a valid dice config file');
+  });
+
+  it('rejects customPresets with valid thresholds but invalid categories', async () => {
+    const { importConfig } = await import('../src/import-export');
+    const data = {
+      version: 4,
+      settings: { diceList: [], showAdvantage: true, showDisadvantage: true },
+      dice: [],
+      customPresets: [{ name: 'Partial', referenceDie: '2d6', thresholds: [7, 10], categories: 'bad' }],
+    };
+    const file = new File([JSON.stringify(data)], 'bad.json', { type: 'application/json' });
+    const result = await importConfig(file);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toBe('Not a valid dice config file');
+  });
+
   it('accepts valid v4 export data', async () => {
     const { importConfig } = await import('../src/import-export');
     const data = {

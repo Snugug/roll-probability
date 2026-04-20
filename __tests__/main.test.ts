@@ -611,4 +611,70 @@ describe('main — import/export buttons', () => {
 
     vi.restoreAllMocks();
   });
+
+  it('applies import and reloads when Replace is clicked', async () => {
+    const init = await loadInit();
+    await init();
+
+    const validData = {
+      version: 4,
+      settings: { diceList: [1], showAdvantage: false, showDisadvantage: false },
+      dice: [{
+        id: 1,
+        name: '3d8',
+        count: 3,
+        sides: 8,
+        presetName: 'PbtA',
+        thresholds: [7, 10],
+        categories: [
+          { label: 'Miss', color: '#f87171' },
+          { label: 'Weak Hit', color: '#facc15' },
+          { label: 'Strong Hit', color: '#4ade80' },
+        ],
+        minMod: -2,
+        maxMod: 5,
+      }],
+      customPresets: [],
+    };
+
+    const file = new File([JSON.stringify(validData)], 'good.json', { type: 'application/json' });
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+
+    const originalCreateElement = document.createElement.bind(document);
+    let fileInput: HTMLInputElement | null = null;
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreateElement(tag);
+      if (tag === 'input') {
+        fileInput = el as HTMLInputElement;
+        Object.defineProperty(fileInput, 'files', { value: dataTransfer.files });
+      }
+      return el;
+    });
+
+    // Mock location.reload
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { reload: reloadMock },
+      writable: true,
+    });
+
+    document.getElementById('upload-btn')!.click();
+    fileInput!.dispatchEvent(new Event('change'));
+    await new Promise(r => setTimeout(r, 50));
+
+    // Click Replace
+    const replaceBtn = document.querySelector('.confirm-replace') as HTMLButtonElement;
+    expect(replaceBtn).not.toBeNull();
+    replaceBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+
+    // Verify data was written
+    const settings = await loadSettings();
+    expect(settings!.showAdvantage).toBe(false);
+    expect(settings!.showDisadvantage).toBe(false);
+    expect(reloadMock).toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+  });
 });
