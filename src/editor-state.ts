@@ -24,7 +24,7 @@ export class ThresholdEditorState {
   }
 
   get presetName(): string {
-    return this.config.presetName ?? 'PbtA';
+    return this.config.presetName ?? BUILTIN_PRESETS[0].name;
   }
 
   set presetName(name: string) {
@@ -50,8 +50,8 @@ export class ThresholdEditorState {
     this.config.thresholds = [...custom.thresholds];
     this.config.categories = custom.categories.map(c => ({ ...c }));
     this.config.criticals = custom.criticals ?? { type: 'none' };
-    this.config.advantageMethod = custom.advantageMethod ?? 'plus-one-drop-low';
-    this.config.disadvantageMethod = custom.disadvantageMethod ?? 'plus-one-drop-high';
+    this.config.advantageMethod = custom.advantageMethod ?? BUILTIN_PRESETS[0].advantageMethod;
+    this.config.disadvantageMethod = custom.disadvantageMethod ?? BUILTIN_PRESETS[0].disadvantageMethod;
     this._onChange('structure');
   }
 

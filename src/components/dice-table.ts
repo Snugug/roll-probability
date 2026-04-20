@@ -1,5 +1,5 @@
 import type { DiceConfig } from '../thresholds';
-import type { ModifierData, ModeResult, DiceView } from './dice-view-data';
+import { buildColumnDescriptors, type ModifierData, type DiceView, type ColumnDescriptor } from './dice-view-data';
 import type { RollMode } from '../engine';
 
 interface ColumnDef {
@@ -20,7 +20,7 @@ export class DiceTableElement extends HTMLElement implements DiceView {
 
     const modes = this._activeModes(showAdvantage, showDisadvantage);
     const multiMode = modes.length > 1;
-    const columns = this._buildColumns(config, data);
+    const columns = this._buildColumns(config);
 
     const wrapper = document.createElement('div');
     wrapper.className = 'table-wrapper';
@@ -43,105 +43,24 @@ export class DiceTableElement extends HTMLElement implements DiceView {
     return modes;
   }
 
-  private _buildColumns(config: DiceConfig, _data: ModifierData[]): ColumnDef[] {
-    const { categories, thresholds, criticals } = config;
-    const columns: ColumnDef[] = [];
-
-    const hasCritSwatches = criticals.type === 'natural' || criticals.type === 'conditional-doubles';
-    const missBeforeCat = criticals.type === 'conditional-doubles' ? criticals.miss : -1;
-    const hitAfterCat = criticals.type === 'conditional-doubles' ? criticals.hit : -1;
-    const missCatColor = criticals.type === 'conditional-doubles'
-      ? categories[criticals.miss]?.color ?? '#888' : '#888';
-    const hitCatColor = criticals.type === 'conditional-doubles'
-      ? categories[criticals.hit]?.color ?? '#888' : '#888';
-
-    if (hasCritSwatches && criticals.type === 'natural') {
-      columns.push(this._critMissCol(missCatColor));
-    }
-
-    for (let i = 0; i < categories.length; i++) {
-      if (hasCritSwatches && i === missBeforeCat) {
-        columns.push(this._critMissCol(missCatColor));
-      }
-
-      const cat = categories[i];
-      let rangeText: string;
-      if (i === 0) {
-        rangeText = '\u2264' + (thresholds[0] - 1);
-      } else if (i === categories.length - 1) {
-        rangeText = thresholds[i - 1] + '+';
-      } else {
-        rangeText = thresholds[i - 1] + '\u2013' + (thresholds[i] - 1);
-      }
-
-      const catIdx = i;
-      columns.push({
-        label: cat.label + ' ' + rangeText,
-        color: cat.color,
-        swatchClass: '',
-        getValues: (modData, modes) =>
-          modes.map(m => modData.results[m]?.segments[catIdx]?.percent ?? 0),
-      });
-
-      if (hasCritSwatches && i === hitAfterCat) {
-        columns.push(this._critHitCol(hitCatColor));
-      }
-    }
-
-    if (hasCritSwatches && criticals.type === 'natural') {
-      columns.push(this._critHitCol(hitCatColor));
-    } else if (hasCritSwatches && criticals.type === 'conditional-doubles') {
-      if (missBeforeCat < 0 || missBeforeCat >= categories.length) {
-        columns.unshift(this._critMissCol(missCatColor));
-      }
-      if (hitAfterCat < 0 || hitAfterCat >= categories.length) {
-        columns.push(this._critHitCol(hitCatColor));
-      }
-    }
-
-    if (criticals.type === 'doubles') {
-      columns.push({
-        label: criticals.label,
-        color: criticals.color,
-        swatchClass: '',
-          getValues: (modData, modes) =>
-          modes.map(m => {
-            const r = modData.results[m];
-            if (!r) return 0;
-            return r.critHitPerCategory.reduce((a, b) => a + b, 0);
-          }),
-      });
-    }
-
-    return columns;
+  private _buildColumns(config: DiceConfig): ColumnDef[] {
+    return buildColumnDescriptors(config).map(col => ({
+      ...col,
+      getValues: this._getValuesFn(col),
+    }));
   }
 
-  private _critMissCol(color: string): ColumnDef {
-    return {
-      label: 'Crit Miss',
-      color,
-      swatchClass: 'range-swatch-crit-miss',
-      getValues: (modData, modes) =>
-        modes.map(m => {
-          const r = modData.results[m];
-          if (!r) return 0;
-          return r.critMissPerCategory.reduce((a, b) => a + b, 0);
-        }),
-    };
-  }
-
-  private _critHitCol(color: string): ColumnDef {
-    return {
-      label: 'Crit Hit',
-      color,
-      swatchClass: 'range-swatch-crit-hit',
-      getValues: (modData, modes) =>
-        modes.map(m => {
-          const r = modData.results[m];
-          if (!r) return 0;
-          return r.critHitPerCategory.reduce((a, b) => a + b, 0);
-        }),
-    };
+  private _getValuesFn(col: ColumnDescriptor): ColumnDef['getValues'] {
+    if (col.kind === 'category') {
+      return (modData, modes) =>
+        modes.map(m => modData.results[m]?.segments[col.catIndex]?.percent ?? 0);
+    }
+    if (col.kind === 'crit-miss') {
+      return (modData, modes) =>
+        modes.map(m => modData.results[m]?.critMissPerCategory.reduce((a, b) => a + b, 0) ?? 0);
+    }
+    return (modData, modes) =>
+      modes.map(m => modData.results[m]?.critHitPerCategory.reduce((a, b) => a + b, 0) ?? 0);
   }
 
   private _buildHead(

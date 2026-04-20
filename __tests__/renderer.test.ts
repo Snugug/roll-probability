@@ -988,6 +988,22 @@ describe('name input', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(input.value).toBe('2d6');
   });
+
+  it('name input selects text on focus', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const input = container.querySelector('.dice-name-input') as HTMLInputElement;
+    const spy = vi.spyOn(input, 'select');
+    input.dispatchEvent(new Event('focus'));
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('name input commits on Enter', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const input = container.querySelector('.dice-name-input') as HTMLInputElement;
+    const spy = vi.spyOn(input, 'blur');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(spy).toHaveBeenCalled();
+  });
 });
 
 describe('notation badge', () => {
@@ -1139,6 +1155,42 @@ describe('preset switching with criticals (Task 13)', () => {
     const pbtaChip = Array.from(chips).find((c: any) => c.textContent === 'PbtA') as HTMLButtonElement;
     pbtaChip.click();
     expect(row.config.criticals).toEqual({ type: 'none' });
+  });
+
+  it('advantage method select updates config', async () => {
+    const cfg = deepConfig(config2d6, {
+      advantageMethod: 'plus-one-drop-low',
+      disadvantageMethod: 'plus-one-drop-high',
+      minMod: 0, maxMod: 0,
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const advSelect = row._dialog.querySelector('.adv-method-select') as HTMLSelectElement;
+    advSelect.value = 'none';
+    advSelect.dispatchEvent(new Event('change'));
+    expect(row.config.advantageMethod).toBe('none');
+  });
+
+  it('disadvantage method select updates config', async () => {
+    const cfg = deepConfig(config2d6, {
+      advantageMethod: 'plus-one-drop-low',
+      disadvantageMethod: 'plus-one-drop-high',
+      minMod: 0, maxMod: 0,
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const disSelect = row._dialog.querySelector('.dis-method-select') as HTMLSelectElement;
+    disSelect.value = 'none';
+    disSelect.dispatchEvent(new Event('change'));
+    expect(row.config.disadvantageMethod).toBe('none');
   });
 
   it('custom preset preserves criticals when switching to and from it', async () => {

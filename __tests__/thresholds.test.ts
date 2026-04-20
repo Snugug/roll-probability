@@ -446,6 +446,17 @@ describe('v1 to v2 migration', () => {
     expect(localStorage.getItem('dice-visualizer-settings')).toBeNull();
   });
 
+  it('defaults showAdvantage/showDisadvantage to true when absent in localStorage', async () => {
+    const legacy = { diceList: ['1d6'] };
+    localStorage.setItem('dice-visualizer-settings', JSON.stringify(legacy));
+
+    const settings = await loadSettings();
+    expect(settings).not.toBeNull();
+    expect(settings!.showAdvantage).toBe(true);
+    expect(settings!.showDisadvantage).toBe(true);
+    expect(localStorage.getItem('dice-visualizer-settings')).toBeNull();
+  });
+
   it('removes localStorage key even with invalid JSON', async () => {
     localStorage.setItem('dice-visualizer-settings', 'not valid json!!!');
 

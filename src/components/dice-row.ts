@@ -1,6 +1,6 @@
 import { loadCustomPresets, type DiceConfig } from '../thresholds';
 import { ThresholdEditorState } from '../editor-state';
-import { computeViewData, type ModifierData, type DiceView } from './dice-view-data';
+import { computeViewData, buildColumnDescriptors, type ModifierData, type DiceView } from './dice-view-data';
 import { BarChartView } from './bar-chart-view';
 import { DiceTableElement } from './dice-table';
 import { buildDialogContent, renderCritSubInputs } from './dialog-builder';
@@ -79,8 +79,10 @@ export class DiceRowElement extends HTMLElement {
     this.appendChild(this._dialog);
 
     loadCustomPresets().then(presets => {
-      this._state.customPresets = presets;
-      this._buildDialogContent();
+      if (presets.length > 0) {
+        this._state.customPresets = presets;
+        this._buildDialogContent();
+      }
     }).catch(() => {});
 
     // Compute view data
@@ -97,59 +99,11 @@ export class DiceRowElement extends HTMLElement {
   }
 
   private _renderRangeItems(header: HTMLElement) {
-    const { thresholds, categories, criticals } = this.config;
-
     const rangeWrapper = document.createElement('div');
     rangeWrapper.className = 'dice-ranges';
 
-    const hasCritSwatches = criticals.type === 'natural' || criticals.type === 'conditional-doubles';
-    const missBeforeCat = criticals.type === 'conditional-doubles' ? criticals.miss : -1;
-    const hitAfterCat = criticals.type === 'conditional-doubles' ? criticals.hit : -1;
-    const missCatColor = criticals.type === 'conditional-doubles' ? categories[criticals.miss]?.color ?? '#888' : '#888';
-    const hitCatColor = criticals.type === 'conditional-doubles' ? categories[criticals.hit]?.color ?? '#888' : '#888';
-
-    if (hasCritSwatches && criticals.type === 'natural') {
-      rangeWrapper.appendChild(this._makeRangeItem('Crit Miss', missCatColor, 'range-swatch-crit-miss'));
-    }
-
-    for (let i = 0; i < categories.length; i++) {
-      if (hasCritSwatches && i === missBeforeCat) {
-        rangeWrapper.appendChild(this._makeRangeItem('Crit Miss', missCatColor, 'range-swatch-crit-miss'));
-      }
-
-      const cat = categories[i];
-      let rangeText: string;
-      if (i === 0) {
-        rangeText = '\u2264' + (thresholds[0] - 1);
-      } else if (i === categories.length - 1) {
-        rangeText = thresholds[i - 1] + '+';
-      } else {
-        rangeText = thresholds[i - 1] + '\u2013' + (thresholds[i] - 1);
-      }
-
-      rangeWrapper.appendChild(this._makeRangeItem(cat.label + ' ' + rangeText, cat.color));
-
-      if (hasCritSwatches && i === hitAfterCat) {
-        rangeWrapper.appendChild(this._makeRangeItem('Crit Hit', hitCatColor, 'range-swatch-crit-hit'));
-      }
-    }
-
-    if (hasCritSwatches && criticals.type === 'natural') {
-      rangeWrapper.appendChild(this._makeRangeItem('Crit Hit', hitCatColor, 'range-swatch-crit-hit'));
-    } else if (hasCritSwatches && criticals.type === 'conditional-doubles') {
-      if (missBeforeCat < 0 || missBeforeCat >= categories.length) {
-        rangeWrapper.insertBefore(
-          this._makeRangeItem('Crit Miss', missCatColor, 'range-swatch-crit-miss'),
-          rangeWrapper.firstChild
-        );
-      }
-      if (hitAfterCat < 0 || hitAfterCat >= categories.length) {
-        rangeWrapper.appendChild(this._makeRangeItem('Crit Hit', hitCatColor, 'range-swatch-crit-hit'));
-      }
-    }
-
-    if (criticals.type === 'doubles') {
-      rangeWrapper.appendChild(this._makeRangeItem(criticals.label, criticals.color));
+    for (const col of buildColumnDescriptors(this.config)) {
+      rangeWrapper.appendChild(this._makeRangeItem(col.label, col.color, col.swatchClass));
     }
 
     header.appendChild(rangeWrapper);
@@ -217,9 +171,9 @@ export class DiceRowElement extends HTMLElement {
     });
   }
 
-  private _renderPreview(previewContainer: HTMLElement) {
+  private _renderPreview(previewContainer: HTMLElement, data?: ModifierData[]) {
     previewContainer.replaceChildren();
-    const previewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
+    const previewData = data ?? computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
     if (this.config.viewMode === 'table') {
       const tableView = document.createElement('dice-table') as DiceTableElement;
       tableView.update(previewData, this.config, this._effectiveShowAdvantage, this._effectiveShowDisadvantage);
@@ -242,13 +196,13 @@ export class DiceRowElement extends HTMLElement {
       renderCritSubInputs(critContainer, this.config, this._state, this._state.isBuiltin);
     }
 
+    this._viewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
+
     const preview = this._dialog.querySelector('.dialog-preview') as HTMLElement | null;
     if (preview) {
-      this._renderPreview(preview);
+      this._renderPreview(preview, this._viewData);
     }
 
-    // Update the active view with recomputed data
-    this._viewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
     this._activeView.update(this._viewData, this.config, this._effectiveShowAdvantage, this._effectiveShowDisadvantage);
   }
 

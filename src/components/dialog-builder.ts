@@ -1,4 +1,4 @@
-import { BUILTIN_PRESETS, type DiceConfig } from '../thresholds';
+import { BUILTIN_PRESETS, type DiceConfig, type AdvantageMethod, type DisadvantageMethod } from '../thresholds';
 import type { ThresholdEditorState } from '../editor-state';
 import { renderCritSubInputs } from './crit-sub-inputs';
 import { createTableSvg, createBarChartSvg, createCloseSvg, createDeleteSvg } from './icons';
@@ -13,6 +13,39 @@ export interface DialogContext {
   onToggleView: () => void;
   onDelete?: () => void;
   createNameInput: () => HTMLInputElement;
+}
+
+function buildLabeledSelect(
+  containerClass: string,
+  labelText: string,
+  selectClass: string,
+  options: Array<{ value: string; text: string }>,
+  currentValue: string,
+  disabled: boolean,
+  onChange: (value: string) => void,
+): HTMLElement {
+  const container = document.createElement('div');
+  container.className = containerClass;
+
+  const label = document.createElement('span');
+  label.textContent = labelText;
+  container.appendChild(label);
+
+  const select = document.createElement('select');
+  select.className = selectClass;
+  select.disabled = disabled;
+
+  for (const opt of options) {
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.text;
+    if (opt.value === currentValue) option.selected = true;
+    select.appendChild(option);
+  }
+
+  select.addEventListener('change', () => { onChange(select.value); });
+  container.appendChild(select);
+  return container;
 }
 
 export function buildDialogContent(ctx: DialogContext): void {
@@ -73,13 +106,11 @@ export function buildDialogContent(ctx: DialogContext): void {
 
   ctx.dialog.appendChild(dialogHeader);
 
-  // Preview
   const preview = document.createElement('div');
   preview.className = 'dialog-preview';
   ctx.renderPreview(preview);
   ctx.dialog.appendChild(preview);
 
-  // Preset chips
   const chipsContainer = document.createElement('div');
   chipsContainer.className = 'preset-chips';
 
@@ -134,11 +165,9 @@ export function buildDialogContent(ctx: DialogContext): void {
 
   ctx.dialog.appendChild(chipsContainer);
 
-  // Editor
   const editorWrapper = document.createElement('div');
   editorWrapper.className = 'dialog-editor-wrapper';
 
-  // Preset name
   const nameInputContainer = document.createElement('div');
   nameInputContainer.className = 'preset-name-input';
   if (isBuiltin) {
@@ -161,7 +190,6 @@ export function buildDialogContent(ctx: DialogContext): void {
 
   editorWrapper.appendChild(nameInputContainer);
 
-  // Modifiers
   const modContainer = document.createElement('div');
   modContainer.className = 'dialog-mod-inputs';
 
@@ -199,114 +227,37 @@ export function buildDialogContent(ctx: DialogContext): void {
 
   editorWrapper.appendChild(modContainer);
 
-  // Advantage method
-  const advContainer = document.createElement('div');
-  advContainer.className = 'dialog-adv-method';
+  editorWrapper.appendChild(buildLabeledSelect(
+    'dialog-adv-method', 'Advantage:', 'adv-method-select',
+    [{ value: 'none', text: 'None' }, { value: 'plus-one-drop-low', text: '+1 Die, Drop Low' }],
+    ctx.config.advantageMethod, isBuiltin,
+    (value) => { ctx.state.setAdvantageMethod(value as AdvantageMethod); },
+  ));
 
-  const advLabel = document.createElement('span');
-  advLabel.textContent = 'Advantage:';
-  advContainer.appendChild(advLabel);
+  editorWrapper.appendChild(buildLabeledSelect(
+    'dialog-dis-method', 'Disadvantage:', 'dis-method-select',
+    [{ value: 'none', text: 'None' }, { value: 'plus-one-drop-high', text: '+1 Die, Drop High' }],
+    ctx.config.disadvantageMethod, isBuiltin,
+    (value) => { ctx.state.setDisadvantageMethod(value as DisadvantageMethod); },
+  ));
 
-  const advSelect = document.createElement('select');
-  advSelect.className = 'adv-method-select';
-  advSelect.disabled = isBuiltin;
-
-  const advOptions: Array<{ value: string; text: string }> = [
-    { value: 'none', text: 'None' },
-    { value: 'plus-one-drop-low', text: '+1 Die, Drop Low' },
-  ];
-  for (const opt of advOptions) {
-    const option = document.createElement('option');
-    option.value = opt.value;
-    option.textContent = opt.text;
-    if (opt.value === ctx.config.advantageMethod) {
-      option.selected = true;
-    }
-    advSelect.appendChild(option);
-  }
-
-  advSelect.addEventListener('change', () => {
-    ctx.state.setAdvantageMethod(advSelect.value as any);
-  });
-
-  advContainer.appendChild(advSelect);
-  editorWrapper.appendChild(advContainer);
-
-  // Disadvantage method
-  const disContainer = document.createElement('div');
-  disContainer.className = 'dialog-dis-method';
-
-  const disLabel = document.createElement('span');
-  disLabel.textContent = 'Disadvantage:';
-  disContainer.appendChild(disLabel);
-
-  const disSelect = document.createElement('select');
-  disSelect.className = 'dis-method-select';
-  disSelect.disabled = isBuiltin;
-
-  const disOptions: Array<{ value: string; text: string }> = [
-    { value: 'none', text: 'None' },
-    { value: 'plus-one-drop-high', text: '+1 Die, Drop High' },
-  ];
-  for (const opt of disOptions) {
-    const option = document.createElement('option');
-    option.value = opt.value;
-    option.textContent = opt.text;
-    if (opt.value === ctx.config.disadvantageMethod) {
-      option.selected = true;
-    }
-    disSelect.appendChild(option);
-  }
-
-  disSelect.addEventListener('change', () => {
-    ctx.state.setDisadvantageMethod(disSelect.value as any);
-  });
-
-  disContainer.appendChild(disSelect);
-  editorWrapper.appendChild(disContainer);
-
-  // Criticals
-  const critContainer = document.createElement('div');
-  critContainer.className = 'dialog-crit-inputs';
-
-  const critLabel = document.createElement('span');
-  critLabel.textContent = 'Criticals:';
-  critContainer.appendChild(critLabel);
-
-  const critSelect = document.createElement('select');
-  critSelect.className = 'crit-type-select';
-  critSelect.disabled = isBuiltin;
-
-  const critOptions: Array<{ value: string; text: string }> = [
-    { value: 'none', text: 'None' },
-    { value: 'natural', text: 'Natural Roll' },
-    { value: 'conditional-doubles', text: 'Conditional Doubles' },
-    { value: 'doubles', text: 'Doubles' },
-  ];
-  for (const opt of critOptions) {
-    const option = document.createElement('option');
-    option.value = opt.value;
-    option.textContent = opt.text;
-    if (opt.value === ctx.config.criticals.type) {
-      option.selected = true;
-    }
-    critSelect.appendChild(option);
-  }
-
+  const critContainer = buildLabeledSelect(
+    'dialog-crit-inputs', 'Criticals:', 'crit-type-select',
+    [
+      { value: 'none', text: 'None' },
+      { value: 'natural', text: 'Natural Roll' },
+      { value: 'conditional-doubles', text: 'Conditional Doubles' },
+      { value: 'doubles', text: 'Doubles' },
+    ],
+    ctx.config.criticals.type, isBuiltin,
+    (value) => { ctx.state.setCritType(value); },
+  );
   const critSubInputs = document.createElement('div');
   critSubInputs.className = 'crit-sub-inputs';
-
-  critSelect.addEventListener('change', () => {
-    ctx.state.setCritType(critSelect.value);
-  });
-
-  critContainer.appendChild(critSelect);
   renderCritSubInputs(critSubInputs, ctx.config, ctx.state, isBuiltin);
   critContainer.appendChild(critSubInputs);
-
   editorWrapper.appendChild(critContainer);
 
-  // Thresholds
   const editor = document.createElement('div');
   editor.className = 'threshold-editor';
 

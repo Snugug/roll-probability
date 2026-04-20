@@ -49,8 +49,8 @@ async function buildConfigWithSaved(id: number): Promise<DiceConfig | null> {
     minMod: saved.minMod ?? -2,
     maxMod: saved.maxMod ?? 5,
     viewMode: saved.viewMode,
-    advantageMethod: saved.advantageMethod ?? 'plus-one-drop-low',
-    disadvantageMethod: saved.disadvantageMethod ?? 'plus-one-drop-high',
+    advantageMethod: saved.advantageMethod ?? PBTA_PRESET.advantageMethod,
+    disadvantageMethod: saved.disadvantageMethod ?? PBTA_PRESET.disadvantageMethod,
   };
 }
 
@@ -60,7 +60,7 @@ async function createAndSaveConfig(label: string): Promise<DiceConfig> {
     name: config.name,
     count: config.count,
     sides: config.sides,
-    presetName: 'PbtA',
+    presetName: PBTA_PRESET.name,
     thresholds: config.thresholds,
     categories: config.categories,
     criticals: config.criticals,
@@ -84,8 +84,8 @@ export async function init(): Promise<void> {
     && settings.diceList.every(id => typeof id === 'number');
 
   if (hasValidDiceList) {
-    for (const id of settings.diceList) {
-      const config = await buildConfigWithSaved(id);
+    const loaded = await Promise.all(settings.diceList.map(id => buildConfigWithSaved(id)));
+    for (const config of loaded) {
       if (config) diceConfigs.push(config);
     }
   } else {
