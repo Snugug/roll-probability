@@ -15,29 +15,24 @@ function setupDOM(): void {
   const header = document.createElement('header');
   header.className = 'app-header';
 
-  const headerTop = document.createElement('div');
-  headerTop.className = 'header-top';
   const h1 = document.createElement('h1');
   h1.textContent = 'TTRPG Dice Probability';
-  headerTop.appendChild(h1);
+  header.appendChild(h1);
 
-  const toggles = document.createElement('div');
-  toggles.className = 'header-toggles';
+  const controls = document.createElement('div');
+  controls.className = 'header-controls';
+
   const disToggle = document.createElement('button');
   disToggle.id = 'dis-toggle';
   disToggle.className = 'toggle-btn dis active';
   disToggle.textContent = 'Disadvantage';
+  controls.appendChild(disToggle);
+
   const advToggle = document.createElement('button');
   advToggle.id = 'adv-toggle';
   advToggle.className = 'toggle-btn adv active';
   advToggle.textContent = 'Advantage';
-  toggles.appendChild(disToggle);
-  toggles.appendChild(advToggle);
-  headerTop.appendChild(toggles);
-  header.appendChild(headerTop);
-
-  const controls = document.createElement('div');
-  controls.className = 'header-controls';
+  controls.appendChild(advToggle);
 
   const inputGroup = document.createElement('div');
   inputGroup.className = 'dice-input-group';
