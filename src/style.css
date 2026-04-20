@@ -814,6 +814,33 @@ dialog::backdrop {
   cursor: not-allowed;
 }
 
+/* ── Dialog Adv/Dis Method Inputs ── */
+
+.dialog-adv-method,
+.dialog-dis-method {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.adv-method-select,
+.dis-method-select {
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.adv-method-select:disabled,
+.dis-method-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Dialog Criticals Editor ── */
 
 .dialog-crit-inputs {
