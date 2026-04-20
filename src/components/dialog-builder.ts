@@ -64,6 +64,7 @@ export function buildDialogContent(ctx: DialogContext): void {
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'dialog-close';
+  closeBtn.setAttribute('autofocus', '');
   closeBtn.appendChild(createCloseSvg());
   closeBtn.addEventListener('click', () => {
     ctx.dialog.close();
