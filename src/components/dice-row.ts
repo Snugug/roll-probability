@@ -37,47 +37,8 @@ export class DiceRowElement extends HTMLElement {
     const header = document.createElement('div');
     header.className = 'dice-header';
 
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.className = 'dice-name-input';
-    nameInput.value = this.config.name;
-
-    let lastCommittedName = this.config.name;
-
-    nameInput.addEventListener('focus', () => {
-      nameInput.select();
-    });
-
-    nameInput.addEventListener('blur', () => {
-      const val = nameInput.value.trim();
-      if (!val) {
-        nameInput.value = lastCommittedName;
-      } else {
-        this.config.name = val;
-        lastCommittedName = val;
-        this._updateBadgeVisibility(badge);
-        if (this.onConfigChange) {
-          this.onConfigChange(this.config, this._state.presetName);
-        }
-      }
-    });
-
-    nameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        nameInput.blur();
-      } else if (e.key === 'Escape') {
-        nameInput.value = lastCommittedName;
-        nameInput.blur();
-      }
-    });
-
+    const nameInput = this._createNameInput();
     header.appendChild(nameInput);
-
-    const badge = document.createElement('span');
-    badge.className = 'dice-notation-badge';
-    badge.textContent = this.config.label;
-    header.appendChild(badge);
-    this._updateBadgeVisibility(badge);
 
     this._renderRangeItems(header);
 
@@ -199,6 +160,43 @@ export class DiceRowElement extends HTMLElement {
     return el;
   }
 
+  _createNameInput(): HTMLInputElement {
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'dice-name-input';
+    nameInput.value = this.config.name;
+
+    let lastCommittedName = this.config.name;
+
+    nameInput.addEventListener('focus', () => {
+      nameInput.select();
+    });
+
+    nameInput.addEventListener('blur', () => {
+      const val = nameInput.value.trim();
+      if (!val) {
+        nameInput.value = lastCommittedName;
+      } else {
+        this.config.name = val;
+        lastCommittedName = val;
+        if (this.onConfigChange) {
+          this.onConfigChange(this.config, this._state.presetName);
+        }
+      }
+    });
+
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        nameInput.blur();
+      } else if (e.key === 'Escape') {
+        nameInput.value = lastCommittedName;
+        nameInput.blur();
+      }
+    });
+
+    return nameInput;
+  }
+
   _buildDialogContent() {
     buildDialogContent({
       dialog: this._dialog,
@@ -207,11 +205,8 @@ export class DiceRowElement extends HTMLElement {
       renderPreview: (container) => this._renderPreview(container),
       onToggleView: () => this._handleToggleView(),
       onDelete: this.onDelete,
+      createNameInput: () => this._createNameInput(),
     });
-  }
-
-  private _updateBadgeVisibility(badge: HTMLElement): void {
-    badge.style.display = this.config.name === this.config.label ? 'none' : '';
   }
 
   private _renderPreview(previewContainer: HTMLElement) {

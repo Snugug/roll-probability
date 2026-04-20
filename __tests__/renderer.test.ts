@@ -147,11 +147,15 @@ describe('bar-column', () => {
 });
 
 describe('dialog', () => {
-  it('contains .dialog-header h3 with "{label} Thresholds"', () => {
+  it('contains .dialog-title with name input, "Thresholds" text, and notation badge', () => {
     renderPage(container, [config2d6], false, false);
     const dialog = container.querySelector('dialog')!;
-    const h3 = dialog.querySelector('.dialog-header h3')!;
-    expect(h3.textContent).toBe('2d6 Thresholds');
+    const title = dialog.querySelector('.dialog-title')!;
+    const nameInput = title.querySelector('.dice-name-input') as HTMLInputElement;
+    expect(nameInput.value).toBe('2d6');
+    expect(title.textContent).toContain('Thresholds');
+    const badge = title.querySelector('.dice-notation-badge')!;
+    expect(badge.textContent).toBe('2d6');
   });
 
   it('contains .dialog-preview section', () => {
@@ -987,16 +991,17 @@ describe('name input', () => {
 });
 
 describe('notation badge', () => {
-  it('hides notation badge when name equals label', () => {
-    renderPage(container, [{ ...config2d6 }], false, false);
-    const badge = container.querySelector('.dice-notation-badge') as HTMLElement;
-    expect(badge.style.display).toBe('none');
+  it('no notation badge on main page header', () => {
+    renderPage(container, [{ ...config2d6, name: 'Attack Roll' }], false, false);
+    const header = container.querySelector('.dice-header')!;
+    expect(header.querySelector('.dice-notation-badge')).toBeNull();
   });
 
-  it('shows notation badge when name differs from label', () => {
-    renderPage(container, [{ ...config2d6, name: 'Attack Roll' }], false, false);
-    const badge = container.querySelector('.dice-notation-badge') as HTMLElement;
-    expect(badge.style.display).not.toBe('none');
+  it('notation badge appears in dialog title', () => {
+    renderPage(container, [{ ...config2d6 }], false, false);
+    const row = container.querySelector('dice-row') as any;
+    const badge = row._dialog.querySelector('.dice-notation-badge');
+    expect(badge).toBeTruthy();
     expect(badge.textContent).toBe('2d6');
   });
 });

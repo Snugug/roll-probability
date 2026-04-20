@@ -12,6 +12,7 @@ export interface DialogContext {
   renderPreview: (container: HTMLElement) => void;
   onToggleView: () => void;
   onDelete?: () => void;
+  createNameInput: () => HTMLInputElement;
 }
 
 export function buildDialogContent(ctx: DialogContext): void {
@@ -22,9 +23,22 @@ export function buildDialogContent(ctx: DialogContext): void {
   const dialogHeader = document.createElement('div');
   dialogHeader.className = 'dialog-header';
 
-  const h3 = document.createElement('h3');
-  h3.textContent = ctx.config.name + ' Thresholds';
-  dialogHeader.appendChild(h3);
+  const titleWrapper = document.createElement('div');
+  titleWrapper.className = 'dialog-title';
+
+  const nameInput = ctx.createNameInput();
+  titleWrapper.appendChild(nameInput);
+
+  const titleText = document.createElement('span');
+  titleText.textContent = 'Thresholds';
+  titleWrapper.appendChild(titleText);
+
+  const badge = document.createElement('span');
+  badge.className = 'dice-notation-badge';
+  badge.textContent = ctx.config.label;
+  titleWrapper.appendChild(badge);
+
+  dialogHeader.appendChild(titleWrapper);
 
   const viewToggleBtn = document.createElement('button');
   viewToggleBtn.className = 'view-toggle-btn';
@@ -130,19 +144,19 @@ export function buildDialogContent(ctx: DialogContext): void {
     nameInputContainer.style.display = 'none';
   }
 
-  const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.value = ctx.state.presetName;
+  const presetNameInput = document.createElement('input');
+  presetNameInput.type = 'text';
+  presetNameInput.value = ctx.state.presetName;
 
   const activeChipLabel = chipsContainer.querySelector('.preset-chip-custom.active .preset-chip-select') as HTMLElement | null;
 
-  nameInput.addEventListener('input', () => {
+  presetNameInput.addEventListener('input', () => {
     if (activeChipLabel) {
-      activeChipLabel.textContent = nameInput.value;
+      activeChipLabel.textContent = presetNameInput.value;
     }
-    ctx.state.renamePreset(nameInput.value);
+    ctx.state.renamePreset(presetNameInput.value);
   });
-  nameInputContainer.appendChild(nameInput);
+  nameInputContainer.appendChild(presetNameInput);
 
   editorWrapper.appendChild(nameInputContainer);
 
