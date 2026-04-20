@@ -28,9 +28,9 @@ export function computeViewData(
   showDisadvantage: boolean,
 ): ModifierData[] {
   const modes: Array<{ mode: RollMode; show: boolean }> = [
-    { mode: 'disadvantage', show: showDisadvantage },
+    { mode: 'disadvantage', show: showDisadvantage && config.disadvantageMethod !== 'none' },
     { mode: 'normal', show: true },
-    { mode: 'advantage', show: showAdvantage },
+    { mode: 'advantage', show: showAdvantage && config.advantageMethod !== 'none' },
   ];
 
   const viewData: ModifierData[] = [];
@@ -43,6 +43,7 @@ export function computeViewData(
       const result = computeProbabilities(
         config.count, config.sides, config.thresholds,
         mod, mode, config.criticals,
+        config.advantageMethod, config.disadvantageMethod,
       );
       results[mode] = {
         segments: result.categories.map((percent, i) => ({

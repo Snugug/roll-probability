@@ -14,6 +14,8 @@ const config2d6: DiceConfig = {
   ],
   criticals: { type: 'none' },
   minMod: 0, maxMod: 2,
+  advantageMethod: 'plus-one-drop-low' as const,
+  disadvantageMethod: 'plus-one-drop-high' as const,
 };
 
 describe('computeViewData', () => {
@@ -70,6 +72,25 @@ describe('computeViewData', () => {
     expect(data[0].results.normal!.critHitPerCategory).toBeDefined();
     expect(data[0].results.normal!.critMissPerCategory).toBeDefined();
   });
+
+  it('excludes advantage when advantageMethod is none even if toggle is on', () => {
+    const noneConfig = { ...config2d6, advantageMethod: 'none' as const };
+    const data = computeViewData(noneConfig, true, false);
+    expect(data[0].results.advantage).toBeUndefined();
+    expect(data[0].results.normal).toBeDefined();
+  });
+
+  it('excludes disadvantage when disadvantageMethod is none even if toggle is on', () => {
+    const noneConfig = { ...config2d6, disadvantageMethod: 'none' as const };
+    const data = computeViewData(noneConfig, false, true);
+    expect(data[0].results.disadvantage).toBeUndefined();
+    expect(data[0].results.normal).toBeDefined();
+  });
+
+  it('includes advantage when method is plus-one-drop-low and toggle is on', () => {
+    const data = computeViewData(config2d6, true, false);
+    expect(data[0].results.advantage).toBeDefined();
+  });
 });
 
 import { BarChartView } from '../src/components/bar-chart-view';
@@ -84,6 +105,8 @@ const config2d6ForView: DiceConfig = {
   ],
   criticals: { type: 'none' },
   minMod: 0, maxMod: 1,
+  advantageMethod: 'plus-one-drop-low' as const,
+  disadvantageMethod: 'plus-one-drop-high' as const,
 };
 
 describe('BarChartView', () => {
