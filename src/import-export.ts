@@ -60,3 +60,89 @@ export function exportConfig(): void {
     URL.revokeObjectURL(url);
   });
 }
+
+export type ImportResult =
+  | { ok: true; data: ExportData }
+  | { ok: false; error: string };
+
+function readFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+function validateExportData(data: unknown): data is ExportData {
+  if (typeof data !== 'object' || data === null) return false;
+  const obj = data as Record<string, unknown>;
+
+  if (typeof obj.version !== 'number') return false;
+  if (typeof obj.settings !== 'object' || obj.settings === null) return false;
+  if (!Array.isArray(obj.dice)) return false;
+  if (!Array.isArray(obj.customPresets)) return false;
+
+  const settings = obj.settings as Record<string, unknown>;
+  if (!Array.isArray(settings.diceList)) return false;
+  if (typeof settings.showAdvantage !== 'boolean') return false;
+  if (typeof settings.showDisadvantage !== 'boolean') return false;
+
+  for (const die of obj.dice as unknown[]) {
+    if (typeof die !== 'object' || die === null) return false;
+    const d = die as Record<string, unknown>;
+    if (typeof d.name !== 'string') return false;
+    if (typeof d.count !== 'number') return false;
+    if (typeof d.sides !== 'number') return false;
+    if (!Array.isArray(d.thresholds)) return false;
+    if (!Array.isArray(d.categories)) return false;
+    if (typeof d.minMod !== 'number') return false;
+    if (typeof d.maxMod !== 'number') return false;
+  }
+
+  for (const preset of obj.customPresets as unknown[]) {
+    if (typeof preset !== 'object' || preset === null) return false;
+    const p = preset as Record<string, unknown>;
+    if (typeof p.name !== 'string') return false;
+    if (typeof p.referenceDie !== 'string') return false;
+    if (!Array.isArray(p.thresholds)) return false;
+    if (!Array.isArray(p.categories)) return false;
+  }
+
+  return true;
+}
+
+export async function importConfig(file: File): Promise<ImportResult> {
+  let text: string;
+  try {
+    text = await readFile(file);
+  } catch {
+    return { ok: false, error: 'Not a valid dice config file' };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ok: false, error: 'Not a valid dice config file' };
+  }
+
+  if (!validateExportData(parsed)) {
+    return { ok: false, error: 'Not a valid dice config file' };
+  }
+
+  if (parsed.version < 3) {
+    return { ok: false, error: 'Something went wrong' };
+  }
+
+  // Version 3 -> 4 migration is a no-op (same data shape)
+  if (parsed.version === 3) {
+    parsed.version = 4;
+  }
+
+  if (parsed.version !== CURRENT_VERSION) {
+    return { ok: false, error: 'Something went wrong' };
+  }
+
+  return { ok: true, data: parsed };
+}
