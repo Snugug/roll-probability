@@ -947,3 +947,55 @@ dialog::backdrop {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ── Confirmation Dialog ── */
+
+.confirm-dialog {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 400px;
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.confirm-dialog p {
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-cancel,
+.confirm-replace {
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  color: #e0e0e0;
+}
+
+.confirm-replace {
+  background: #ef444433;
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.confirm-cancel:hover {
+  background: #ffffff11;
+}
+
+.confirm-replace:hover {
+  background: #ef444455;
+}
