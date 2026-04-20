@@ -199,6 +199,72 @@ export function buildDialogContent(ctx: DialogContext): void {
 
   editorWrapper.appendChild(modContainer);
 
+  // Advantage method
+  const advContainer = document.createElement('div');
+  advContainer.className = 'dialog-adv-method';
+
+  const advLabel = document.createElement('span');
+  advLabel.textContent = 'Advantage:';
+  advContainer.appendChild(advLabel);
+
+  const advSelect = document.createElement('select');
+  advSelect.className = 'adv-method-select';
+  advSelect.disabled = isBuiltin;
+
+  const advOptions: Array<{ value: string; text: string }> = [
+    { value: 'none', text: 'None' },
+    { value: 'plus-one-drop-low', text: '+1 Die, Drop Low' },
+  ];
+  for (const opt of advOptions) {
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.text;
+    if (opt.value === ctx.config.advantageMethod) {
+      option.selected = true;
+    }
+    advSelect.appendChild(option);
+  }
+
+  advSelect.addEventListener('change', () => {
+    ctx.state.setAdvantageMethod(advSelect.value as any);
+  });
+
+  advContainer.appendChild(advSelect);
+  editorWrapper.appendChild(advContainer);
+
+  // Disadvantage method
+  const disContainer = document.createElement('div');
+  disContainer.className = 'dialog-dis-method';
+
+  const disLabel = document.createElement('span');
+  disLabel.textContent = 'Disadvantage:';
+  disContainer.appendChild(disLabel);
+
+  const disSelect = document.createElement('select');
+  disSelect.className = 'dis-method-select';
+  disSelect.disabled = isBuiltin;
+
+  const disOptions: Array<{ value: string; text: string }> = [
+    { value: 'none', text: 'None' },
+    { value: 'plus-one-drop-high', text: '+1 Die, Drop High' },
+  ];
+  for (const opt of disOptions) {
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.text;
+    if (opt.value === ctx.config.disadvantageMethod) {
+      option.selected = true;
+    }
+    disSelect.appendChild(option);
+  }
+
+  disSelect.addEventListener('change', () => {
+    ctx.state.setDisadvantageMethod(disSelect.value as any);
+  });
+
+  disContainer.appendChild(disSelect);
+  editorWrapper.appendChild(disContainer);
+
   // Criticals
   const critContainer = document.createElement('div');
   critContainer.className = 'dialog-crit-inputs';
