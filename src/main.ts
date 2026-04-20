@@ -143,7 +143,9 @@ export async function init(): Promise<void> {
   }
 
   function handleDialogClose(): void {
+    const scrollY = window.scrollY;
     update();
+    window.scrollTo(0, scrollY);
   }
 
   function update(): void {
