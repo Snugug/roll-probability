@@ -353,6 +353,27 @@ describe('IndexedDB persistence', () => {
     const all = await loadCustomPresets();
     expect(all).toHaveLength(0);
   });
+
+  it('saveCustomPreset round-trips with minMod and maxMod', async () => {
+    const preset: SavedCustomPreset = {
+      name: 'ModPreset',
+      referenceDie: '2d6',
+      thresholds: [7, 10],
+      categories: [
+        { label: 'A', color: '#aaa' },
+        { label: 'B', color: '#bbb' },
+        { label: 'C', color: '#ccc' },
+      ],
+      minMod: -3,
+      maxMod: 8,
+    };
+    const id = await saveCustomPreset(preset);
+    const loaded = await loadCustomPresets();
+    const found = loaded.find(p => p.id === id);
+    expect(found).toBeDefined();
+    expect(found!.minMod).toBe(-3);
+    expect(found!.maxMod).toBe(8);
+  });
 });
 
 describe('v1 to v2 migration', () => {

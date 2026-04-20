@@ -52,6 +52,8 @@ export class ThresholdEditorState {
     this.config.criticals = custom.criticals ?? { type: 'none' };
     this.config.advantageMethod = custom.advantageMethod ?? BUILTIN_PRESETS[0].advantageMethod;
     this.config.disadvantageMethod = custom.disadvantageMethod ?? BUILTIN_PRESETS[0].disadvantageMethod;
+    this.config.minMod = custom.minMod ?? -2;
+    this.config.maxMod = custom.maxMod ?? 5;
     this._onChange('structure');
   }
 
@@ -160,6 +162,8 @@ export class ThresholdEditorState {
       criticals: this.config.criticals,
       advantageMethod: this.config.advantageMethod,
       disadvantageMethod: this.config.disadvantageMethod,
+      minMod: this.config.minMod,
+      maxMod: this.config.maxMod,
     };
 
     saveCustomPreset(newPreset).then(savedId => {
@@ -192,6 +196,8 @@ export class ThresholdEditorState {
         custom.criticals = this.config.criticals;
         custom.advantageMethod = this.config.advantageMethod;
         custom.disadvantageMethod = this.config.disadvantageMethod;
+        custom.minMod = this.config.minMod;
+        custom.maxMod = this.config.maxMod;
         saveCustomPreset(custom).catch(() => {});
       }
     }

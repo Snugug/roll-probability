@@ -32,6 +32,8 @@ export interface SavedCustomPreset {
   criticals?: CriticalConfig;
   advantageMethod?: AdvantageMethod;
   disadvantageMethod?: DisadvantageMethod;
+  minMod?: number;
+  maxMod?: number;
 }
 
 export interface ThresholdCategory {
