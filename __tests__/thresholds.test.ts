@@ -716,6 +716,7 @@ describe('syncConfigsToPresets', () => {
     syncConfigsToPresets(configs, []);
     expect(configs[0].thresholds).toEqual(mapThresholds(DND_PRESET, 1, 20));
     expect(configs[0].criticals).toEqual(mapCriticals(DND_PRESET, 1, 20));
+    expect(configs[0].categories).toEqual(DND_PRESET.categories);
     expect(configs[0].advantageMethod).toBe(DND_PRESET.advantageMethod);
     expect(configs[0].disadvantageMethod).toBe(DND_PRESET.disadvantageMethod);
   });
