@@ -22,18 +22,6 @@ function setupDOM(): void {
   const controls = document.createElement('div');
   controls.className = 'header-controls';
 
-  const disToggle = document.createElement('button');
-  disToggle.id = 'dis-toggle';
-  disToggle.className = 'toggle-btn dis active';
-  disToggle.textContent = 'Disadvantage';
-  controls.appendChild(disToggle);
-
-  const advToggle = document.createElement('button');
-  advToggle.id = 'adv-toggle';
-  advToggle.className = 'toggle-btn adv active';
-  advToggle.textContent = 'Advantage';
-  controls.appendChild(advToggle);
-
   const inputGroup = document.createElement('div');
   inputGroup.className = 'dice-input-group';
   const diceInput = document.createElement('input');
@@ -48,6 +36,18 @@ function setupDOM(): void {
   inputGroup.appendChild(diceInput);
   inputGroup.appendChild(addBtn);
   controls.appendChild(inputGroup);
+
+  const disToggle = document.createElement('button');
+  disToggle.id = 'dis-toggle';
+  disToggle.className = 'toggle-btn dis active';
+  disToggle.textContent = 'Disadvantage';
+  controls.appendChild(disToggle);
+
+  const advToggle = document.createElement('button');
+  advToggle.id = 'adv-toggle';
+  advToggle.className = 'toggle-btn adv active';
+  advToggle.textContent = 'Advantage';
+  controls.appendChild(advToggle);
 
   header.appendChild(controls);
   app.appendChild(header);
