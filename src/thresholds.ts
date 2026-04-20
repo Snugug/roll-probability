@@ -140,7 +140,7 @@ export function mapCriticals(
 }
 
 const DB_NAME = 'dice-visualizer';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -175,17 +175,15 @@ export function openDB(): Promise<IDBDatabase> {
         }
       }
 
-      // Ensure diceThresholds uses auto-increment keyPath.
-      // This handles v1→v3 (old string-keyed store), v2→v3 (store may
-      // have been left without keyPath by a buggy v2 migration), and
-      // fresh installs.
-      if (db.objectStoreNames.contains('diceThresholds')) {
-        db.deleteObjectStore('diceThresholds');
+      if (oldVersion < 3) {
+        if (db.objectStoreNames.contains('diceThresholds')) {
+          db.deleteObjectStore('diceThresholds');
+        }
+        db.createObjectStore('diceThresholds', {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
       }
-      db.createObjectStore('diceThresholds', {
-        keyPath: 'id',
-        autoIncrement: true,
-      });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);

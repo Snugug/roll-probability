@@ -464,6 +464,63 @@ describe('v1 to v2 migration', () => {
   });
 });
 
+describe('v3 to v4 migration', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    await Promise.all(
+      dbs
+        .filter(db => db.name)
+        .map(
+          db =>
+            new Promise<void>((resolve, reject) => {
+              const req = indexedDB.deleteDatabase(db.name!);
+              req.onsuccess = () => resolve();
+              req.onerror = () => reject(req.error);
+              req.onblocked = () => resolve();
+            })
+        )
+    );
+  });
+
+  it('preserves diceThresholds records from v3', async () => {
+    // Create a v3 database with a diceThresholds record
+    const v3req = indexedDB.open('dice-visualizer', 3);
+    await new Promise<void>((resolve) => {
+      v3req.onupgradeneeded = () => {
+        const db = v3req.result;
+        db.createObjectStore('settings');
+        db.createObjectStore('customPresets', { keyPath: 'id', autoIncrement: true });
+        db.createObjectStore('diceThresholds', { keyPath: 'id', autoIncrement: true });
+      };
+      v3req.onsuccess = () => {
+        const db = v3req.result;
+        const tx = db.transaction('diceThresholds', 'readwrite');
+        tx.objectStore('diceThresholds').add({
+          name: '2d6', count: 2, sides: 6,
+          presetName: 'PbtA',
+          thresholds: [7, 10],
+          categories: [
+            { label: 'Miss', color: '#f87171' },
+            { label: 'Weak Hit', color: '#facc15' },
+            { label: 'Strong Hit', color: '#4ade80' },
+          ],
+          minMod: -2, maxMod: 5,
+        });
+        tx.oncomplete = () => { db.close(); resolve(); };
+      };
+    });
+
+    // Open with v4 — record should survive
+    const loaded = await loadDiceThresholds(1);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.name).toBe('2d6');
+    expect(loaded!.thresholds).toEqual([7, 10]);
+    // New fields are absent on old records
+    expect(loaded!.advantageMethod).toBeUndefined();
+    expect(loaded!.disadvantageMethod).toBeUndefined();
+  });
+});
+
 describe('IndexedDB error paths', () => {
   it('openDB rejects when indexedDB.open fires onerror', async () => {
     const spy = vi.spyOn(indexedDB, 'open').mockImplementation(() => {
