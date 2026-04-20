@@ -221,14 +221,18 @@ export function computeDisadvantageProbabilities(
 
 export function computeProbabilities(
   count: number, sides: number, thresholds: number[], modifier: number, mode: RollMode,
-  criticals: CriticalConfig = { type: 'none' }
+  criticals: CriticalConfig = { type: 'none' },
+  advantageMethod: AdvantageMethod = 'plus-one-drop-low',
+  disadvantageMethod: DisadvantageMethod = 'plus-one-drop-high',
 ): ProbabilityResult {
   switch (mode) {
     case 'normal':
       return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
     case 'advantage':
+      if (advantageMethod === 'none') return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
       return computeAdvantageProbabilities(count, sides, thresholds, modifier, criticals);
     case 'disadvantage':
+      if (disadvantageMethod === 'none') return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
       return computeDisadvantageProbabilities(count, sides, thresholds, modifier, criticals);
   }
 }

@@ -120,6 +120,32 @@ describe('computeProbabilities', () => {
   });
 });
 
+describe('computeProbabilities with method gating', () => {
+  it('returns normal results when advantage method is none', () => {
+    const normal = computeNormalProbabilities(2, 6, [7, 10], 0);
+    const result = computeProbabilities(2, 6, [7, 10], 0, 'advantage', { type: 'none' }, 'none');
+    expect(result.categories).toEqual(normal.categories);
+  });
+
+  it('returns normal results when disadvantage method is none', () => {
+    const normal = computeNormalProbabilities(2, 6, [7, 10], 0);
+    const result = computeProbabilities(2, 6, [7, 10], 0, 'disadvantage', { type: 'none' }, 'plus-one-drop-low', 'none');
+    expect(result.categories).toEqual(normal.categories);
+  });
+
+  it('returns advantage results when advantage method is plus-one-drop-low', () => {
+    const direct = computeAdvantageProbabilities(2, 6, [7, 10], 0);
+    const result = computeProbabilities(2, 6, [7, 10], 0, 'advantage', { type: 'none' }, 'plus-one-drop-low');
+    expect(result.categories).toEqual(direct.categories);
+  });
+
+  it('returns disadvantage results when disadvantage method is plus-one-drop-high', () => {
+    const direct = computeDisadvantageProbabilities(2, 6, [7, 10], 0);
+    const result = computeProbabilities(2, 6, [7, 10], 0, 'disadvantage', { type: 'none' }, 'plus-one-drop-low', 'plus-one-drop-high');
+    expect(result.categories).toEqual(direct.categories);
+  });
+});
+
 describe('computeNormalProbabilities with criticals', () => {
   it('returns ProbabilityResult with zero crit arrays when criticals is none', () => {
     const result = computeNormalProbabilities(2, 6, [7, 10], 0, { type: 'none' });
