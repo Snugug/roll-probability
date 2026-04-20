@@ -530,4 +530,85 @@ describe('main — import/export buttons', () => {
     expect(titleRow!.querySelector('#download-btn')).not.toBeNull();
     expect(titleRow!.querySelector('#upload-btn')).not.toBeNull();
   });
+
+  it('shows toast on invalid file upload', async () => {
+    const init = await loadInit();
+    await init();
+
+    const file = new File(['not json'], 'bad.json', { type: 'application/json' });
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+
+    const originalCreateElement = document.createElement.bind(document);
+    let fileInput: HTMLInputElement | null = null;
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreateElement(tag);
+      if (tag === 'input') {
+        fileInput = el as HTMLInputElement;
+        Object.defineProperty(fileInput, 'files', { value: dataTransfer.files });
+      }
+      return el;
+    });
+
+    document.getElementById('upload-btn')!.click();
+    fileInput!.dispatchEvent(new Event('change'));
+    await new Promise(r => setTimeout(r, 50));
+
+    const toast = document.querySelector('.toast');
+    expect(toast).not.toBeNull();
+    expect(toast!.textContent).toBe('Not a valid dice config file');
+
+    vi.restoreAllMocks();
+  });
+
+  it('shows confirmation dialog on valid file upload', async () => {
+    const init = await loadInit();
+    await init();
+
+    const validData = {
+      version: 4,
+      settings: { diceList: [1], showAdvantage: true, showDisadvantage: true },
+      dice: [{
+        id: 1,
+        name: '2d6',
+        count: 2,
+        sides: 6,
+        presetName: 'PbtA',
+        thresholds: [7, 10],
+        categories: [
+          { label: 'Miss', color: '#f87171' },
+          { label: 'Weak Hit', color: '#facc15' },
+          { label: 'Strong Hit', color: '#4ade80' },
+        ],
+        minMod: -2,
+        maxMod: 5,
+      }],
+      customPresets: [],
+    };
+
+    const file = new File([JSON.stringify(validData)], 'good.json', { type: 'application/json' });
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+
+    const originalCreateElement = document.createElement.bind(document);
+    let fileInput: HTMLInputElement | null = null;
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreateElement(tag);
+      if (tag === 'input') {
+        fileInput = el as HTMLInputElement;
+        Object.defineProperty(fileInput, 'files', { value: dataTransfer.files });
+      }
+      return el;
+    });
+
+    document.getElementById('upload-btn')!.click();
+    fileInput!.dispatchEvent(new Event('change'));
+    await new Promise(r => setTimeout(r, 50));
+
+    const dialog = document.querySelector('.confirm-dialog') as HTMLDialogElement;
+    expect(dialog).not.toBeNull();
+    expect(dialog.textContent).toContain('replace all your current dice and presets');
+
+    vi.restoreAllMocks();
+  });
 });
