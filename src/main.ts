@@ -12,6 +12,9 @@ import {
   type SavedDiceThreshold,
 } from './thresholds';
 import { renderPage } from './renderer';
+import { createDownloadSvg, createUploadSvg } from './components/icons';
+import { exportConfig, importConfig, applyImport } from './import-export';
+import { showToast } from './components/toast';
 import './style.css';
 
 function buildConfig(label: string): Omit<DiceConfig, 'id'> {
@@ -104,6 +107,59 @@ export async function init(): Promise<void> {
   const disToggle = document.getElementById('dis-toggle') as HTMLButtonElement;
   const diceInput = document.getElementById('dice-input') as HTMLInputElement;
   const diceAddBtn = document.getElementById('dice-add') as HTMLButtonElement;
+
+  const downloadBtn = document.getElementById('download-btn')!;
+  const uploadBtn = document.getElementById('upload-btn')!;
+
+  downloadBtn.appendChild(createDownloadSvg());
+  uploadBtn.appendChild(createUploadSvg());
+
+  downloadBtn.addEventListener('click', () => { exportConfig(); });
+
+  uploadBtn.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      importConfig(file).then(result => {
+        if (!result.ok) {
+          showToast(result.error);
+          return;
+        }
+        const dialog = document.createElement('dialog');
+        dialog.className = 'confirm-dialog';
+
+        const msg = document.createElement('p');
+        msg.textContent = 'This will replace all your current dice and presets. Continue?';
+        dialog.appendChild(msg);
+
+        const actions = document.createElement('div');
+        actions.className = 'confirm-actions';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'confirm-cancel';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', () => { dialog.close(); dialog.remove(); });
+
+        const replaceBtn = document.createElement('button');
+        replaceBtn.className = 'confirm-replace';
+        replaceBtn.textContent = 'Replace';
+        replaceBtn.addEventListener('click', () => {
+          applyImport(result.data).then(() => { location.reload(); });
+        });
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(replaceBtn);
+        dialog.appendChild(actions);
+
+        document.body.appendChild(dialog);
+        dialog.showModal();
+      });
+    });
+    input.click();
+  });
 
   advToggle.classList.toggle('active', showAdvantage);
   disToggle.classList.toggle('active', showDisadvantage);

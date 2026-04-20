@@ -8,16 +8,31 @@ import {
 } from '../src/thresholds';
 
 function setupDOM(): void {
-  // Safe DOM construction for test harness — all content is static test fixtures
   const app = document.createElement('div');
   app.id = 'app';
 
   const header = document.createElement('header');
   header.className = 'app-header';
 
+  const titleRow = document.createElement('div');
+  titleRow.className = 'title-row';
   const h1 = document.createElement('h1');
   h1.textContent = 'TTRPG Dice Probability';
-  header.appendChild(h1);
+  titleRow.appendChild(h1);
+  const titleActions = document.createElement('div');
+  titleActions.className = 'title-actions';
+  const downloadBtn = document.createElement('button');
+  downloadBtn.id = 'download-btn';
+  downloadBtn.className = 'icon-btn';
+  downloadBtn.setAttribute('aria-label', 'Download config');
+  const uploadBtn = document.createElement('button');
+  uploadBtn.id = 'upload-btn';
+  uploadBtn.className = 'icon-btn';
+  uploadBtn.setAttribute('aria-label', 'Upload config');
+  titleActions.appendChild(downloadBtn);
+  titleActions.appendChild(uploadBtn);
+  titleRow.appendChild(titleActions);
+  header.appendChild(titleRow);
 
   const controls = document.createElement('div');
   controls.className = 'header-controls';
@@ -484,5 +499,35 @@ describe('main — persistence', () => {
     // Threshold record removed from IDB
     const loaded = await loadDiceThresholds(firstId);
     expect(loaded).toBeNull();
+  });
+});
+
+describe('main — import/export buttons', () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    await clearIndexedDB();
+    localStorage.clear();
+    document.body.replaceChildren();
+    setupDOM();
+  });
+
+  it('renders download and upload buttons in the title row', async () => {
+    const init = await loadInit();
+    await init();
+    const downloadBtn = document.getElementById('download-btn');
+    const uploadBtn = document.getElementById('upload-btn');
+    expect(downloadBtn).not.toBeNull();
+    expect(uploadBtn).not.toBeNull();
+    expect(downloadBtn!.querySelector('svg')).not.toBeNull();
+    expect(uploadBtn!.querySelector('svg')).not.toBeNull();
+  });
+
+  it('download button is inside the title row', async () => {
+    const init = await loadInit();
+    await init();
+    const titleRow = document.querySelector('.title-row');
+    expect(titleRow).not.toBeNull();
+    expect(titleRow!.querySelector('#download-btn')).not.toBeNull();
+    expect(titleRow!.querySelector('#upload-btn')).not.toBeNull();
   });
 });
