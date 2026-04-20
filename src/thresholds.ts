@@ -102,6 +102,37 @@ export const DND_PRESET: ThresholdPreset = {
 
 export const BUILTIN_PRESETS: ThresholdPreset[] = [PBTA_PRESET, DND_PRESET];
 
+export function syncConfigsToPresets(
+  configs: DiceConfig[],
+  customPresets: SavedCustomPreset[],
+): void {
+  for (const config of configs) {
+    const presetName = config.presetName;
+    if (!presetName) continue;
+
+    const builtin = BUILTIN_PRESETS.find(p => p.name === presetName);
+    if (builtin) {
+      config.thresholds = mapThresholds(builtin, config.count, config.sides);
+      config.categories = builtin.categories.map(c => ({ ...c }));
+      config.criticals = mapCriticals(builtin, config.count, config.sides);
+      config.advantageMethod = builtin.advantageMethod;
+      config.disadvantageMethod = builtin.disadvantageMethod;
+      continue;
+    }
+
+    const custom = customPresets.find(p => p.name === presetName);
+    if (custom) {
+      config.thresholds = [...custom.thresholds];
+      config.categories = custom.categories.map(c => ({ ...c }));
+      config.criticals = custom.criticals ?? { type: 'none' };
+      config.advantageMethod = custom.advantageMethod ?? BUILTIN_PRESETS[0].advantageMethod;
+      config.disadvantageMethod = custom.disadvantageMethod ?? BUILTIN_PRESETS[0].disadvantageMethod;
+      config.minMod = custom.minMod ?? -2;
+      config.maxMod = custom.maxMod ?? 5;
+    }
+  }
+}
+
 function diceRange(count: number, sides: number): { min: number; max: number; range: number } {
   const min = count;
   const max = count * sides;

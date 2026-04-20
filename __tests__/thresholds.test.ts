@@ -4,7 +4,10 @@ import {
   DND_PRESET,
   mapThresholds,
   mapCriticals,
+  syncConfigsToPresets,
+  BUILTIN_PRESETS,
   type ThresholdPreset,
+  type DiceConfig,
   openDB,
   loadSettings,
   saveSettings,
@@ -624,5 +627,160 @@ describe('IndexedDB error paths', () => {
 
     await expect(loadSettings()).rejects.toBeTruthy();
     spy.mockRestore();
+  });
+});
+
+describe('syncConfigsToPresets', () => {
+  function makeConfig(overrides: Partial<DiceConfig> & { id: number }): DiceConfig {
+    return {
+      name: '2d6',
+      count: 2,
+      sides: 6,
+      label: '2d6',
+      thresholds: [7, 10],
+      categories: [
+        { label: 'Miss', color: '#f87171' },
+        { label: 'Weak Hit', color: '#facc15' },
+        { label: 'Strong Hit', color: '#4ade80' },
+      ],
+      criticals: { type: 'none' },
+      minMod: -2,
+      maxMod: 5,
+      advantageMethod: 'plus-one-drop-low',
+      disadvantageMethod: 'plus-one-drop-high',
+      ...overrides,
+    };
+  }
+
+  it('syncs custom preset fields to all configs using that preset', () => {
+    const configs = [
+      makeConfig({ id: 1, presetName: 'MyPreset', minMod: -2, maxMod: 5 }),
+      makeConfig({ id: 2, presetName: 'MyPreset', minMod: -2, maxMod: 5 }),
+    ];
+    const presets: SavedCustomPreset[] = [{
+      id: 1,
+      name: 'MyPreset',
+      referenceDie: '2d6',
+      thresholds: [8, 11],
+      categories: [
+        { label: 'Fail', color: '#ff0000' },
+        { label: 'Partial', color: '#ffff00' },
+        { label: 'Success', color: '#00ff00' },
+      ],
+      criticals: { type: 'doubles', color: '#f00', label: 'Crit' },
+      advantageMethod: 'double-dice',
+      disadvantageMethod: 'none',
+      minMod: -5,
+      maxMod: 10,
+    }];
+    syncConfigsToPresets(configs, presets);
+    for (const cfg of configs) {
+      expect(cfg.thresholds).toEqual([8, 11]);
+      expect(cfg.categories[0].label).toBe('Fail');
+      expect(cfg.criticals).toEqual({ type: 'doubles', color: '#f00', label: 'Crit' });
+      expect(cfg.advantageMethod).toBe('double-dice');
+      expect(cfg.disadvantageMethod).toBe('none');
+      expect(cfg.minMod).toBe(-5);
+      expect(cfg.maxMod).toBe(10);
+    }
+  });
+
+  it('does not affect configs using a different preset', () => {
+    const configs = [
+      makeConfig({ id: 1, presetName: 'MyPreset' }),
+      makeConfig({ id: 2, presetName: 'OtherPreset' }),
+    ];
+    const presets: SavedCustomPreset[] = [{
+      id: 1,
+      name: 'MyPreset',
+      referenceDie: '2d6',
+      thresholds: [8, 11],
+      categories: [
+        { label: 'Fail', color: '#ff0000' },
+        { label: 'Partial', color: '#ffff00' },
+        { label: 'Success', color: '#00ff00' },
+      ],
+      minMod: -5,
+      maxMod: 10,
+    }];
+    syncConfigsToPresets(configs, presets);
+    expect(configs[0].thresholds).toEqual([8, 11]);
+    expect(configs[1].thresholds).toEqual([7, 10]);
+    expect(configs[1].minMod).toBe(-2);
+  });
+
+  it('syncs builtin preset with mapped thresholds and criticals', () => {
+    const configs = [
+      makeConfig({ id: 1, presetName: 'D&D', count: 1, sides: 20, thresholds: [99], criticals: { type: 'none' } }),
+    ];
+    syncConfigsToPresets(configs, []);
+    expect(configs[0].thresholds).toEqual(mapThresholds(DND_PRESET, 1, 20));
+    expect(configs[0].criticals).toEqual(mapCriticals(DND_PRESET, 1, 20));
+    expect(configs[0].advantageMethod).toBe(DND_PRESET.advantageMethod);
+    expect(configs[0].disadvantageMethod).toBe(DND_PRESET.disadvantageMethod);
+  });
+
+  it('leaves config unchanged when preset name matches nothing', () => {
+    const configs = [
+      makeConfig({ id: 1, presetName: 'Nonexistent', thresholds: [5] }),
+    ];
+    syncConfigsToPresets(configs, []);
+    expect(configs[0].thresholds).toEqual([5]);
+  });
+
+  it('preserves per-dice fields (name, count, sides, viewMode)', () => {
+    const configs = [
+      makeConfig({ id: 1, presetName: 'MyPreset', name: 'MyDice', count: 3, sides: 8, viewMode: 'table' }),
+    ];
+    const presets: SavedCustomPreset[] = [{
+      id: 1,
+      name: 'MyPreset',
+      referenceDie: '2d6',
+      thresholds: [8, 11],
+      categories: [
+        { label: 'Fail', color: '#ff0000' },
+        { label: 'Partial', color: '#ffff00' },
+        { label: 'Success', color: '#00ff00' },
+      ],
+      minMod: 0,
+      maxMod: 3,
+    }];
+    syncConfigsToPresets(configs, presets);
+    expect(configs[0].name).toBe('MyDice');
+    expect(configs[0].count).toBe(3);
+    expect(configs[0].sides).toBe(8);
+    expect(configs[0].viewMode).toBe('table');
+  });
+
+  it('defaults missing optional fields on custom preset', () => {
+    const configs = [
+      makeConfig({ id: 1, presetName: 'Bare' }),
+    ];
+    const presets: SavedCustomPreset[] = [{
+      id: 1,
+      name: 'Bare',
+      referenceDie: '2d6',
+      thresholds: [7, 10],
+      categories: [
+        { label: 'A', color: '#aaa' },
+        { label: 'B', color: '#bbb' },
+        { label: 'C', color: '#ccc' },
+      ],
+    }];
+    syncConfigsToPresets(configs, presets);
+    expect(configs[0].criticals).toEqual({ type: 'none' });
+    expect(configs[0].advantageMethod).toBe(BUILTIN_PRESETS[0].advantageMethod);
+    expect(configs[0].disadvantageMethod).toBe(BUILTIN_PRESETS[0].disadvantageMethod);
+    expect(configs[0].minMod).toBe(-2);
+    expect(configs[0].maxMod).toBe(5);
+  });
+
+  it('does not touch minMod/maxMod for builtin presets', () => {
+    const configs = [
+      makeConfig({ id: 1, presetName: 'PbtA', minMod: -10, maxMod: 20 }),
+    ];
+    syncConfigsToPresets(configs, []);
+    expect(configs[0].minMod).toBe(-10);
+    expect(configs[0].maxMod).toBe(20);
   });
 });
