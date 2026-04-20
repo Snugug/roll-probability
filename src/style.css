@@ -37,7 +37,7 @@ body {
   gap: 8px;
 }
 
-.header-controls .toggle-btn:first-of-type {
+.header-controls .dice-input-group {
   margin-left: auto;
 }
 
