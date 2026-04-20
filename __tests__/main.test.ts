@@ -430,6 +430,8 @@ describe('main — persistence', () => {
         criticals: { type: 'none' as const },
         minMod: -1,
         maxMod: 3,
+        advantageMethod: 'plus-one-drop-low' as const,
+        disadvantageMethod: 'plus-one-drop-high' as const,
       };
       row.onConfigChange(newConfig, 'Custom');
       await new Promise(r => setTimeout(r, 50));

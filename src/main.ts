@@ -27,6 +27,8 @@ function buildConfig(label: string): Omit<DiceConfig, 'id'> {
     criticals: PBTA_PRESET.criticals,
     minMod: -2,
     maxMod: 5,
+    advantageMethod: PBTA_PRESET.advantageMethod,
+    disadvantageMethod: PBTA_PRESET.disadvantageMethod,
   };
 }
 
@@ -47,6 +49,8 @@ async function buildConfigWithSaved(id: number): Promise<DiceConfig | null> {
     minMod: saved.minMod ?? -2,
     maxMod: saved.maxMod ?? 5,
     viewMode: saved.viewMode,
+    advantageMethod: saved.advantageMethod ?? 'plus-one-drop-low',
+    disadvantageMethod: saved.disadvantageMethod ?? 'plus-one-drop-high',
   };
 }
 
@@ -62,6 +66,8 @@ async function createAndSaveConfig(label: string): Promise<DiceConfig> {
     criticals: config.criticals,
     minMod: config.minMod,
     maxMod: config.maxMod,
+    advantageMethod: config.advantageMethod,
+    disadvantageMethod: config.disadvantageMethod,
   };
   const id = await createDiceThreshold(saved);
   return { ...config, id };
@@ -124,6 +130,8 @@ export async function init(): Promise<void> {
       minMod: config.minMod,
       maxMod: config.maxMod,
       viewMode: config.viewMode,
+      advantageMethod: config.advantageMethod,
+      disadvantageMethod: config.disadvantageMethod,
     }).catch(() => {});
   }
 
