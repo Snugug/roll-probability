@@ -22,6 +22,14 @@ export class DiceRowElement extends HTMLElement {
   private _activeView!: DiceView;
   private _toggleBtn!: HTMLButtonElement;
 
+  private get _effectiveShowAdvantage(): boolean {
+    return this.showAdvantage && this.config.advantageMethod !== 'none';
+  }
+
+  private get _effectiveShowDisadvantage(): boolean {
+    return this.showDisadvantage && this.config.disadvantageMethod !== 'none';
+  }
+
   connectedCallback() {
     this._state = new ThresholdEditorState(this.config, (kind) => {
       if (kind === 'structure') {
@@ -84,7 +92,7 @@ export class DiceRowElement extends HTMLElement {
 
     // Attach the active view
     this._activeView = this.config.viewMode === 'table' ? this._tableView : this._barView;
-    this._activeView.update(this._viewData, this.config, this.showAdvantage, this.showDisadvantage);
+    this._activeView.update(this._viewData, this.config, this._effectiveShowAdvantage, this._effectiveShowDisadvantage);
     this.appendChild(this._activeView);
   }
 
@@ -241,7 +249,7 @@ export class DiceRowElement extends HTMLElement {
 
     // Update the active view with recomputed data
     this._viewData = computeViewData(this.config, this.showAdvantage, this.showDisadvantage);
-    this._activeView.update(this._viewData, this.config, this.showAdvantage, this.showDisadvantage);
+    this._activeView.update(this._viewData, this.config, this._effectiveShowAdvantage, this._effectiveShowDisadvantage);
   }
 
   private _handleToggleView(): void {
@@ -263,7 +271,7 @@ export class DiceRowElement extends HTMLElement {
   private _swapView(): void {
     this._activeView.remove();
     this._activeView = this.config.viewMode === 'table' ? this._tableView : this._barView;
-    this._activeView.update(this._viewData, this.config, this.showAdvantage, this.showDisadvantage);
+    this._activeView.update(this._viewData, this.config, this._effectiveShowAdvantage, this._effectiveShowDisadvantage);
     this.appendChild(this._activeView);
   }
 }
