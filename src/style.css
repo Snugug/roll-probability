@@ -43,21 +43,20 @@ body {
 }
 
 .icon-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid #333;
   border-radius: 4px;
-  background: transparent;
-  color: #e0e0e0;
-  cursor: pointer;
-  transition: background 0.15s;
+  transition: color 0.15s;
 }
 
 .icon-btn:hover {
-  background: #ffffff11;
+  color: #e0e0e0;
 }
 
 .header-controls {
