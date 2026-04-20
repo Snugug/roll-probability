@@ -956,6 +956,8 @@ dialog::backdrop {
   border-radius: 8px;
   padding: 24px;
   max-width: 400px;
+  height: fit-content;
+  margin: auto;
 }
 
 .confirm-dialog::backdrop {
