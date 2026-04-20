@@ -229,7 +229,7 @@ export function buildDialogContent(ctx: DialogContext): void {
 
   editorWrapper.appendChild(buildLabeledSelect(
     'dialog-adv-method', 'Advantage:', 'adv-method-select',
-    [{ value: 'none', text: 'None' }, { value: 'plus-one-drop-low', text: '+1 Die, Drop Low' }],
+    [{ value: 'none', text: 'None' }, { value: 'plus-one-drop-low', text: '+1 Die, Drop Low' }, { value: 'double-dice', text: 'Double Dice' }],
     ctx.config.advantageMethod, isBuiltin,
     (value) => { ctx.state.setAdvantageMethod(value as AdvantageMethod); },
   ));

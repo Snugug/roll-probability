@@ -1175,6 +1175,26 @@ describe('preset switching with criticals (Task 13)', () => {
     expect(row.config.advantageMethod).toBe('none');
   });
 
+  it('advantage method select includes double-dice option', async () => {
+    const cfg = deepConfig(config2d6, {
+      advantageMethod: 'plus-one-drop-low',
+      disadvantageMethod: 'plus-one-drop-high',
+      minMod: 0, maxMod: 0,
+    });
+    renderPage(container, [cfg], false, false);
+    const row = container.querySelector('dice-row') as any;
+    await new Promise(r => setTimeout(r, 50));
+    const addBtn = row._dialog.querySelector('.preset-add') as HTMLButtonElement;
+    addBtn.click();
+    await new Promise(r => setTimeout(r, 50));
+    const advSelect = row._dialog.querySelector('.adv-method-select') as HTMLSelectElement;
+    const values = Array.from(advSelect.options).map(o => o.value);
+    expect(values).toContain('double-dice');
+    advSelect.value = 'double-dice';
+    advSelect.dispatchEvent(new Event('change'));
+    expect(row.config.advantageMethod).toBe('double-dice');
+  });
+
   it('disadvantage method select updates config', async () => {
     const cfg = deepConfig(config2d6, {
       advantageMethod: 'plus-one-drop-low',
