@@ -17,7 +17,7 @@ export function renderPage(
   showAdvantage: boolean,
   showDisadvantage: boolean,
   onConfigChange?: (index: number, config: DiceConfig, presetName: string) => void,
-  onDialogClose?: () => void,
+  onDialogClose?: () => void | Promise<void>,
   onDelete?: (index: number) => void
 ): void {
   container.replaceChildren();

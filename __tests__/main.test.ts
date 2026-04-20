@@ -427,7 +427,7 @@ describe('main — persistence', () => {
   });
 
   it('syncs preset-level fields to all dice using the same custom preset on dialog close', async () => {
-    const presetId = await saveCustomPreset({
+    await saveCustomPreset({
       name: 'Shared',
       referenceDie: '2d6',
       thresholds: [7, 10],

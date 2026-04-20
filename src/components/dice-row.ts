@@ -11,7 +11,7 @@ export class DiceRowElement extends HTMLElement {
   showAdvantage = true;
   showDisadvantage = true;
   onConfigChange?: (config: DiceConfig, presetName: string) => void;
-  onDialogClose?: () => void;
+  onDialogClose?: () => void | Promise<void>;
   onDelete?: () => void;
 
   _dialog!: HTMLDialogElement;
@@ -73,7 +73,7 @@ export class DiceRowElement extends HTMLElement {
     this._dialog = document.createElement('dialog');
     this._dialog.id = 'dialog-' + this.config.id;
     this._dialog.addEventListener('close', () => {
-      if (this.onDialogClose) this.onDialogClose();
+      if (this.onDialogClose) Promise.resolve(this.onDialogClose()).catch(() => {});
     });
     this._buildDialogContent();
     this.appendChild(this._dialog);
