@@ -53,7 +53,14 @@ export class DiceTableElement extends HTMLElement implements DiceView {
   private _getValuesFn(col: ColumnDescriptor): ColumnDef['getValues'] {
     if (col.kind === 'category') {
       return (modData, modes) =>
-        modes.map(m => modData.results[m]?.segments[col.catIndex]?.percent ?? 0);
+        modes.map(m => {
+          const r = modData.results[m];
+          if (!r) return 0;
+          const base = r.segments[col.catIndex]?.percent ?? 0;
+          const critHit = r.critHitPerCategory[col.catIndex] ?? 0;
+          const critMiss = r.critMissPerCategory[col.catIndex] ?? 0;
+          return base - critHit - critMiss;
+        });
     }
     if (col.kind === 'crit-miss') {
       return (modData, modes) =>

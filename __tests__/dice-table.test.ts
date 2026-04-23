@@ -340,6 +340,97 @@ describe('DiceTableElement — doubles crit missing mode fallback', () => {
   });
 });
 
+describe('DiceTableElement — row values sum to 100%', () => {
+  const condDoublesCfg: DiceConfig = {
+    count: 2, sides: 10, label: '2d10',
+    thresholds: [11, 16],
+    categories: [
+      { label: 'Miss', color: '#f87171' },
+      { label: 'Weak Hit', color: '#facc15' },
+      { label: 'Strong Hit', color: '#4ade80' },
+    ],
+    criticals: { type: 'conditional-doubles', hit: 2, miss: 0 },
+    minMod: -2, maxMod: 7,
+    advantageMethod: 'plus-one-drop-low' as const,
+    disadvantageMethod: 'plus-one-drop-high' as const,
+  };
+
+  it('all column values in each row sum to 100% for conditional-doubles (base only)', () => {
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = computeViewData(condDoublesCfg, false, false);
+    table.update(data, condDoublesCfg, false, false);
+    const rows = table.querySelectorAll('tbody tr');
+    for (const row of rows) {
+      const tds = row.querySelectorAll('td');
+      let sum = 0;
+      for (const td of tds) {
+        sum += parseFloat(td.textContent!);
+      }
+      expect(sum).toBeCloseTo(100, 0);
+    }
+  });
+
+  it('all column values in each row sum to 100% for conditional-doubles (with advantage)', () => {
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = computeViewData(condDoublesCfg, true, false);
+    table.update(data, condDoublesCfg, true, false);
+    const rows = table.querySelectorAll('tbody tr');
+    for (const row of rows) {
+      const tds = row.querySelectorAll('td');
+      const modesPerCol = 2; // base + adv
+      for (let modeOffset = 0; modeOffset < modesPerCol; modeOffset++) {
+        let sum = 0;
+        for (let i = modeOffset; i < tds.length; i += modesPerCol) {
+          sum += parseFloat(tds[i].textContent!);
+        }
+        expect(sum).toBeCloseTo(100, 0);
+      }
+    }
+  });
+
+  it('all column values in each row sum to 100% for natural crits', () => {
+    const naturalCfg: DiceConfig = {
+      ...config2d6,
+      criticals: { type: 'natural', hit: 12, miss: 2 },
+    };
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = computeViewData(naturalCfg, false, false);
+    table.update(data, naturalCfg, false, false);
+    const rows = table.querySelectorAll('tbody tr');
+    for (const row of rows) {
+      const tds = row.querySelectorAll('td');
+      let sum = 0;
+      for (const td of tds) {
+        sum += parseFloat(td.textContent!);
+      }
+      expect(sum).toBeCloseTo(100, 0);
+    }
+  });
+
+  it('all column values in each row sum to 100% for unconditional doubles', () => {
+    const doublesCfg: DiceConfig = {
+      ...config2d6,
+      criticals: { type: 'doubles', color: '#ffaa00', label: 'Doubles!' },
+    };
+    const table = document.createElement('dice-table') as DiceTableElement;
+    container.appendChild(table);
+    const data = computeViewData(doublesCfg, false, false);
+    table.update(data, doublesCfg, false, false);
+    const rows = table.querySelectorAll('tbody tr');
+    for (const row of rows) {
+      const tds = row.querySelectorAll('td');
+      let sum = 0;
+      for (const td of tds) {
+        sum += parseFloat(td.textContent!);
+      }
+      expect(sum).toBeCloseTo(100, 0);
+    }
+  });
+});
+
 describe('DiceTableElement — replaces on update', () => {
   it('clears previous content on re-render', () => {
     const table = document.createElement('dice-table') as DiceTableElement;
