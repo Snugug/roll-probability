@@ -1,4 +1,5 @@
 import { BUILTIN_PRESETS, type DiceConfig, type AdvantageMethod, type DisadvantageMethod } from '../thresholds';
+import { parseDiceExpression, formatDiceExpression } from '../engine';
 import type { ThresholdEditorState } from '../editor-state';
 import { renderCritSubInputs } from './crit-sub-inputs';
 import { createTableSvg, createBarChartSvg, createCloseSvg, createDeleteSvg } from './icons';
@@ -66,10 +67,42 @@ export function buildDialogContent(ctx: DialogContext): void {
   titleText.textContent = 'Thresholds';
   titleWrapper.appendChild(titleText);
 
-  const badge = document.createElement('span');
-  badge.className = 'dice-notation-badge';
-  badge.textContent = ctx.config.label;
-  titleWrapper.appendChild(badge);
+  const notationInput = document.createElement('input');
+  notationInput.type = 'text';
+  notationInput.className = 'dice-notation-badge';
+  notationInput.value = ctx.config.label;
+  notationInput.spellcheck = false;
+
+  let lastCommittedNotation = ctx.config.label;
+
+  const commitNotation = () => {
+    const raw = notationInput.value.trim().toLowerCase();
+    const parsed = parseDiceExpression(raw);
+    if (!parsed) {
+      notationInput.value = lastCommittedNotation;
+      return;
+    }
+    const canonical = formatDiceExpression(parsed);
+    if (canonical === lastCommittedNotation) {
+      notationInput.value = canonical;
+      return;
+    }
+    lastCommittedNotation = canonical;
+    notationInput.value = canonical;
+    ctx.state.setTerms(parsed);
+  };
+
+  notationInput.addEventListener('blur', commitNotation);
+  notationInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      notationInput.blur();
+    } else if (e.key === 'Escape') {
+      notationInput.value = lastCommittedNotation;
+      notationInput.blur();
+    }
+  });
+
+  titleWrapper.appendChild(notationInput);
 
   dialogHeader.appendChild(titleWrapper);
 

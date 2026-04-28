@@ -154,8 +154,8 @@ describe('dialog', () => {
     const nameInput = title.querySelector('.dice-name-input') as HTMLInputElement;
     expect(nameInput.value).toBe('2d6');
     expect(title.textContent).toContain('Thresholds');
-    const badge = title.querySelector('.dice-notation-badge')!;
-    expect(badge.textContent).toBe('2d6');
+    const badge = title.querySelector('.dice-notation-badge') as HTMLInputElement;
+    expect(badge.value).toBe('2d6');
   });
 
   it('contains .dialog-preview section', () => {
@@ -1016,9 +1016,9 @@ describe('notation badge', () => {
   it('notation badge appears in dialog title', () => {
     renderPage(container, [{ ...config2d6 }], false, false);
     const row = container.querySelector('dice-row') as any;
-    const badge = row._dialog.querySelector('.dice-notation-badge');
+    const badge = row._dialog.querySelector('.dice-notation-badge') as HTMLInputElement;
     expect(badge).toBeTruthy();
-    expect(badge.textContent).toBe('2d6');
+    expect(badge.value).toBe('2d6');
   });
 });
 
