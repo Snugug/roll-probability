@@ -526,4 +526,36 @@ describe('multi-term computation', () => {
     const totalCritHit = result.critHitPerCategory.reduce((a, b) => a + b, 0);
     expect(totalCritHit).toBeCloseTo(critHit / (36 * 4) * 100, 10);
   });
+
+  it('doubles crit fires only on first-group doubles in multi-term expression', () => {
+    // 2d6 - 1d4 with doubles crit (any first-group doubles trigger).
+    // 6 doubles outcomes for 2d6: (1,1),(2,2),(3,3),(4,4),(5,5),(6,6).
+    // Each pairs with 4 d4 outcomes → 24 doubles trigger out of 144 total.
+    const result = computeNormalProbabilities(
+      [{ sign: '+', count: 2, sides: 6 }, { sign: '-', count: 1, sides: 4 }],
+      [7, 10], 0,
+      { type: 'doubles', color: '#ffaa00', label: 'Crit' },
+    );
+    const totalCritHit = result.critHitPerCategory.reduce((a, b) => a + b, 0);
+    expect(totalCritHit).toBeCloseTo(24 / 144 * 100, 10);
+  });
+
+  it('conditional-doubles miss path fires on first-group doubles in miss category', () => {
+    // 2d6 - 1d4 with miss category at index 0 (<7), conditional doubles.
+    // Must have first-group doubles AND total < 7.
+    const result = computeNormalProbabilities(
+      [{ sign: '+', count: 2, sides: 6 }, { sign: '-', count: 1, sides: 4 }],
+      [7, 10], 0,
+      { type: 'conditional-doubles', hit: 2, miss: 0 },
+    );
+    // Hand count: pairs (a,a) with a∈{1..6}, d∈{1..4}, total = 2a - d < 7
+    let critMiss = 0;
+    for (let a = 1; a <= 6; a++) {
+      for (let d = 1; d <= 4; d++) {
+        if (2 * a - d < 7) critMiss++;
+      }
+    }
+    const totalCritMiss = result.critMissPerCategory.reduce((a, b) => a + b, 0);
+    expect(totalCritMiss).toBeCloseTo(critMiss / (36 * 4) * 100, 10);
+  });
 });
