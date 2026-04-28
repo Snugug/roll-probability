@@ -634,8 +634,7 @@ describe('syncConfigsToPresets', () => {
   function makeConfig(overrides: Partial<DiceConfig> & { id: number }): DiceConfig {
     return {
       name: '2d6',
-      count: 2,
-      sides: 6,
+      terms: [{ sign: '+', count: 2, sides: 6 }],
       label: '2d6',
       thresholds: [7, 10],
       categories: [
@@ -711,7 +710,7 @@ describe('syncConfigsToPresets', () => {
 
   it('syncs builtin preset with mapped thresholds and criticals', () => {
     const configs = [
-      makeConfig({ id: 1, presetName: 'D&D', count: 1, sides: 20, thresholds: [99], criticals: { type: 'none' } }),
+      makeConfig({ id: 1, presetName: 'D&D', terms: [{ sign: '+', count: 1, sides: 20 }], thresholds: [99], criticals: { type: 'none' } }),
     ];
     syncConfigsToPresets(configs, []);
     expect(configs[0].thresholds).toEqual(mapThresholds(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]));
@@ -729,9 +728,9 @@ describe('syncConfigsToPresets', () => {
     expect(configs[0].thresholds).toEqual([5]);
   });
 
-  it('preserves per-dice fields (name, count, sides, viewMode)', () => {
+  it('preserves per-dice fields (name, terms, viewMode)', () => {
     const configs = [
-      makeConfig({ id: 1, presetName: 'MyPreset', name: 'MyDice', count: 3, sides: 8, viewMode: 'table' }),
+      makeConfig({ id: 1, presetName: 'MyPreset', name: 'MyDice', terms: [{ sign: '+', count: 3, sides: 8 }], viewMode: 'table' }),
     ];
     const presets: SavedCustomPreset[] = [{
       id: 1,
@@ -748,8 +747,7 @@ describe('syncConfigsToPresets', () => {
     }];
     syncConfigsToPresets(configs, presets);
     expect(configs[0].name).toBe('MyDice');
-    expect(configs[0].count).toBe(3);
-    expect(configs[0].sides).toBe(8);
+    expect(configs[0].terms).toEqual([{ sign: '+', count: 3, sides: 8 }]);
     expect(configs[0].viewMode).toBe('table');
   });
 

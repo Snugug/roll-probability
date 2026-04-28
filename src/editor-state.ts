@@ -37,9 +37,9 @@ export class ThresholdEditorState {
 
   switchToBuiltinPreset(preset: ThresholdPreset): void {
     this.presetName = preset.name;
-    this.config.thresholds = mapThresholds(preset, [{ sign: '+', count: this.config.count, sides: this.config.sides }]);
+    this.config.thresholds = mapThresholds(preset, this.config.terms);
     this.config.categories = preset.categories.map(c => ({ ...c }));
-    this.config.criticals = mapCriticals(preset, [{ sign: '+', count: this.config.count, sides: this.config.sides }]);
+    this.config.criticals = mapCriticals(preset, this.config.terms);
     this.config.advantageMethod = preset.advantageMethod;
     this.config.disadvantageMethod = preset.disadvantageMethod;
     this._onChange('structure');
@@ -97,7 +97,8 @@ export class ThresholdEditorState {
     if (type === 'none') {
       this.config.criticals = { type: 'none' };
     } else if (type === 'natural') {
-      this.config.criticals = { type: 'natural', hit: this.config.count * this.config.sides, miss: this.config.count };
+      const first = this.config.terms[0];
+      this.config.criticals = { type: 'natural', hit: first.count * first.sides, miss: first.count };
     } else if (type === 'conditional-doubles') {
       this.config.criticals = { type: 'conditional-doubles', hit: this.config.categories.length - 1, miss: 0 };
     } else if (type === 'doubles') {

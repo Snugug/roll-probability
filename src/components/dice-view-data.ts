@@ -105,7 +105,7 @@ export function computeViewData(
     for (const { mode, show } of modes) {
       if (!show) continue;
       const result = computeProbabilities(
-        [{ sign: '+', count: config.count, sides: config.sides }],
+        config.terms,
         config.thresholds,
         mod, mode, config.criticals,
         config.advantageMethod, config.disadvantageMethod,

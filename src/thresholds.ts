@@ -54,8 +54,7 @@ export interface ThresholdPreset {
 export interface DiceConfig {
   id: number;
   name: string;
-  count: number;
-  sides: number;
+  terms: DiceTerm[];
   label: string;
   thresholds: number[];
   categories: ThresholdCategory[];
@@ -112,9 +111,9 @@ export function syncConfigsToPresets(
 
     const builtin = BUILTIN_PRESETS.find(p => p.name === presetName);
     if (builtin) {
-      config.thresholds = mapThresholds(builtin, [{ sign: '+', count: config.count, sides: config.sides }]);
+      config.thresholds = mapThresholds(builtin, config.terms);
       config.categories = builtin.categories.map(c => ({ ...c }));
-      config.criticals = mapCriticals(builtin, [{ sign: '+', count: config.count, sides: config.sides }]);
+      config.criticals = mapCriticals(builtin, config.terms);
       config.advantageMethod = builtin.advantageMethod;
       config.disadvantageMethod = builtin.disadvantageMethod;
       continue;

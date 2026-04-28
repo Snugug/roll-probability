@@ -480,7 +480,7 @@ describe('main — persistence', () => {
       const firstConfig = row.config;
       const newConfig = {
         id: firstConfig.id,
-        count: 2, sides: 6, label: '2d6',
+        terms: [{ sign: '+' as const, count: 2, sides: 6 }], label: '2d6',
         name: '2d6',
         thresholds: [6, 11],
         categories: [
