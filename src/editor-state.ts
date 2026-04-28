@@ -9,7 +9,9 @@ import {
   type SavedCustomPreset,
   type AdvantageMethod,
   type DisadvantageMethod,
+  type DiceTerm,
 } from './thresholds';
+import { formatDiceExpression } from './engine';
 
 export type EditorChangeKind = 'value' | 'structure';
 
@@ -153,11 +155,33 @@ export class ThresholdEditorState {
     this._persistAndNotify('value');
   }
 
+  setTerms(terms: DiceTerm[]): void {
+    if (terms.length === 0) return;
+    const prevFirst = this.config.terms[0];
+    const newFirst = terms[0];
+    const firstChanged = prevFirst.count !== newFirst.count || prevFirst.sides !== newFirst.sides;
+
+    this.config.terms = terms;
+    this.config.label = formatDiceExpression(terms);
+
+    if (firstChanged && this.isBuiltin) {
+      const builtin = BUILTIN_PRESETS.find(p => p.name === this.presetName);
+      if (builtin) {
+        this.config.thresholds = mapThresholds(builtin, terms);
+        this.config.criticals = mapCriticals(builtin, terms);
+      }
+    }
+
+    this._persistAndNotify('structure');
+  }
+
   createCustomPreset(): void {
     const name = 'Custom ' + Date.now();
+    const first = this.config.terms[0];
+    const referenceDie = first.count + 'd' + first.sides;
     const newPreset: SavedCustomPreset = {
       name,
-      referenceDie: this.config.label,
+      referenceDie,
       thresholds: [...this.config.thresholds],
       categories: this.config.categories.map(c => ({ ...c })),
       criticals: this.config.criticals,
