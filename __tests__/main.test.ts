@@ -104,8 +104,7 @@ async function createTestDiceEntry(label: string, overrides?: Record<string, any
   const sides = match ? parseInt(match[2]) : 6;
   return createDiceThreshold({
     name: label,
-    count,
-    sides,
+    terms: [{ sign: '+', count, sides }],
     presetName: 'PbtA',
     thresholds: [7, 10],
     categories: [
@@ -186,8 +185,7 @@ describe('main — loadSettings', () => {
     await saveDiceThresholds({
       id,
       name: '2d6',
-      count: 2,
-      sides: 6,
+      terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'PbtA',
       thresholds: [7, 10],
       categories: [
@@ -501,8 +499,7 @@ describe('main — persistence', () => {
       expect(saved!.presetName).toBe('Custom');
       expect(saved!.thresholds).toEqual([6, 11]);
       expect(saved!.name).toBe('2d6');
-      expect(saved!.count).toBe(2);
-      expect(saved!.sides).toBe(6);
+      expect(saved!.terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
       expect(saved!.minMod).toBe(-1);
       expect(saved!.maxMod).toBe(3);
     }

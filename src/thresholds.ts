@@ -10,8 +10,7 @@ export interface SavedSettings {
 export interface SavedDiceThreshold {
   id?: number;
   name: string;
-  count: number;
-  sides: number;
+  terms: DiceTerm[];
   presetName: string;
   categories: ThresholdCategory[];
   thresholds: number[];
@@ -170,7 +169,7 @@ export function mapCriticals(
 }
 
 const DB_NAME = 'dice-visualizer';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -213,6 +212,25 @@ export function openDB(): Promise<IDBDatabase> {
           keyPath: 'id',
           autoIncrement: true,
         });
+      }
+
+      if (oldVersion < 5) {
+        if (db.objectStoreNames.contains('diceThresholds')) {
+          const store = request.transaction!.objectStore('diceThresholds');
+          const cursorReq = store.openCursor();
+          cursorReq.onsuccess = () => {
+            const cursor = cursorReq.result;
+            if (!cursor) return;
+            const rec = cursor.value;
+            if (rec && rec.terms === undefined && typeof rec.count === 'number' && typeof rec.sides === 'number') {
+              rec.terms = [{ sign: '+', count: rec.count, sides: rec.sides }];
+              delete rec.count;
+              delete rec.sides;
+              cursor.update(rec);
+            }
+            cursor.continue();
+          };
+        }
       }
     };
     request.onsuccess = () => resolve(request.result);

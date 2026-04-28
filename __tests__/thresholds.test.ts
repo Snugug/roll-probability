@@ -179,12 +179,12 @@ describe('IndexedDB persistence', () => {
 
   it('saveSettings and loadSettings round-trip', async () => {
     const id1 = await createDiceThreshold({
-      name: '1d6', count: 1, sides: 6,
+      name: '1d6', terms: [{ sign: '+', count: 1, sides: 6 }],
       presetName: 'PbtA', categories: [], thresholds: [],
       minMod: 0, maxMod: 0,
     });
     const id2 = await createDiceThreshold({
-      name: '1d8', count: 1, sides: 8,
+      name: '1d8', terms: [{ sign: '+', count: 1, sides: 8 }],
       presetName: 'PbtA', categories: [], thresholds: [],
       minMod: 0, maxMod: 0,
     });
@@ -201,8 +201,7 @@ describe('IndexedDB persistence', () => {
   it('createDiceThreshold and loadDiceThresholds round-trip', async () => {
     const config = {
       name: '2d6',
-      count: 2,
-      sides: 6,
+      terms: [{ sign: '+' as const, count: 2, sides: 6 }],
       presetName: 'PbtA',
       categories: [
         { label: 'Miss', color: '#f87171' },
@@ -217,21 +216,20 @@ describe('IndexedDB persistence', () => {
     const loaded = await loadDiceThresholds(id);
     expect(loaded).not.toBeNull();
     expect(loaded!.name).toBe('2d6');
-    expect(loaded!.count).toBe(2);
-    expect(loaded!.sides).toBe(6);
+    expect(loaded!.terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
     expect(loaded!.thresholds).toEqual([7, 10]);
   });
 
   it('saveDiceThresholds updates existing entry by id', async () => {
     const id = await createDiceThreshold({
-      name: '2d6', count: 2, sides: 6,
+      name: '2d6', terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'PbtA',
       categories: [{ label: 'Miss', color: '#f87171' }],
       thresholds: [7],
       minMod: -2, maxMod: 5,
     });
     await saveDiceThresholds({
-      id, name: 'Attack', count: 2, sides: 6,
+      id, name: 'Attack', terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'Custom',
       categories: [{ label: 'Miss', color: '#ff0000' }],
       thresholds: [8],
@@ -244,7 +242,7 @@ describe('IndexedDB persistence', () => {
 
   it('deleteDiceThreshold removes the entry', async () => {
     const id = await createDiceThreshold({
-      name: '2d6', count: 2, sides: 6,
+      name: '2d6', terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'PbtA', categories: [], thresholds: [],
       minMod: 0, maxMod: 0,
     });
@@ -255,7 +253,7 @@ describe('IndexedDB persistence', () => {
 
   it('createDiceThreshold auto-increments ids', async () => {
     const config = {
-      name: '2d6', count: 2, sides: 6,
+      name: '2d6', terms: [{ sign: '+' as const, count: 2, sides: 6 }],
       presetName: 'PbtA', categories: [], thresholds: [],
       minMod: 0, maxMod: 0,
     };
@@ -268,7 +266,7 @@ describe('IndexedDB persistence', () => {
 
   it('createDiceThreshold round-trips with criticals field', async () => {
     const config = {
-      name: '1d20', count: 1, sides: 20,
+      name: '1d20', terms: [{ sign: '+' as const, count: 1, sides: 20 }],
       presetName: 'D&D',
       categories: [
         { label: 'Fail', color: '#ff0000' },
@@ -440,7 +438,7 @@ describe('v1 to v2 migration', () => {
 
     // The new auto-increment store exists and accepts entries
     const id = await createDiceThreshold({
-      name: '2d6', count: 2, sides: 6,
+      name: '2d6', terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'PbtA', categories: [], thresholds: [7, 10],
       minMod: -2, maxMod: 5,
     });
@@ -499,7 +497,7 @@ describe('v1 to v2 migration', () => {
   });
 });
 
-describe('v3 to v4 migration', () => {
+describe('v3 to v5 migration', () => {
   beforeEach(async () => {
     const dbs = await indexedDB.databases();
     await Promise.all(
@@ -517,7 +515,7 @@ describe('v3 to v4 migration', () => {
     );
   });
 
-  it('preserves diceThresholds records from v3', async () => {
+  it('migrates diceThresholds records from v3 (count/sides → terms)', async () => {
     // Create a v3 database with a diceThresholds record
     const v3req = indexedDB.open('dice-visualizer', 3);
     await new Promise<void>((resolve) => {
@@ -545,11 +543,14 @@ describe('v3 to v4 migration', () => {
       };
     });
 
-    // Open with v4 — record should survive
+    // Open with v5 — record should be migrated to terms
     const loaded = await loadDiceThresholds(1);
     expect(loaded).not.toBeNull();
     expect(loaded!.name).toBe('2d6');
     expect(loaded!.thresholds).toEqual([7, 10]);
+    expect(loaded!.terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+    expect((loaded as any).count).toBeUndefined();
+    expect((loaded as any).sides).toBeUndefined();
     // New fields are absent on old records
     expect(loaded!.advantageMethod).toBeUndefined();
     expect(loaded!.disadvantageMethod).toBeUndefined();
@@ -781,6 +782,69 @@ describe('syncConfigsToPresets', () => {
     syncConfigsToPresets(configs, []);
     expect(configs[0].minMod).toBe(-10);
     expect(configs[0].maxMod).toBe(20);
+  });
+});
+
+describe('DB v4 → v5 migration', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    await Promise.all(
+      dbs
+        .filter(db => db.name)
+        .map(
+          db =>
+            new Promise<void>((resolve, reject) => {
+              const req = indexedDB.deleteDatabase(db.name!);
+              req.onsuccess = () => resolve();
+              req.onerror = () => reject(req.error);
+              req.onblocked = () => resolve();
+            })
+        )
+    );
+  });
+
+  it('transforms count/sides records to terms', async () => {
+    // Open at v4, seed a record with the legacy shape
+    const v4 = indexedDB.open('dice-visualizer', 4);
+    await new Promise<void>((resolve, reject) => {
+      v4.onupgradeneeded = () => {
+        const db = v4.result;
+        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
+        if (!db.objectStoreNames.contains('customPresets')) db.createObjectStore('customPresets', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('diceThresholds')) db.createObjectStore('diceThresholds', { keyPath: 'id', autoIncrement: true });
+      };
+      v4.onsuccess = () => {
+        const db = v4.result;
+        const tx = db.transaction('diceThresholds', 'readwrite');
+        const req = tx.objectStore('diceThresholds').add({
+          name: '2d6',
+          count: 2,
+          sides: 6,
+          presetName: 'PbtA',
+          thresholds: [7, 10],
+          categories: [],
+          minMod: -2,
+          maxMod: 5,
+        });
+        req.onsuccess = () => { db.close(); resolve(); };
+        req.onerror = () => reject(req.error);
+      };
+      v4.onerror = () => reject(v4.error);
+    });
+
+    // Open at v5 — migration should transform the record
+    const db = await openDB();
+    const tx = db.transaction('diceThresholds', 'readonly');
+    const all = await new Promise<any[]>((resolve, reject) => {
+      const req = tx.objectStore('diceThresholds').getAll();
+      req.onsuccess = () => { db.close(); resolve(req.result); };
+      req.onerror = () => reject(req.error);
+    });
+
+    expect(all).toHaveLength(1);
+    expect(all[0].terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+    expect(all[0].count).toBeUndefined();
+    expect(all[0].sides).toBeUndefined();
   });
 });
 
