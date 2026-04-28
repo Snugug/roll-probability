@@ -14,6 +14,14 @@ export interface ProbabilityResult {
   critMissPerCategory: number[];
 }
 
+export type DiceTermSign = '+' | '-';
+
+export interface DiceTerm {
+  sign: DiceTermSign;
+  count: number;
+  sides: number;
+}
+
 function hasDoubles(kept: number[]): boolean {
   for (let i = 0; i < kept.length; i++) {
     for (let j = i + 1; j < kept.length; j++) {
@@ -245,11 +253,77 @@ export function computeProbabilities(
   }
 }
 
+const TERM_PATTERN = /^(\d+)[dD](\d+)$/;
+
+export function parseDiceExpression(input: string): DiceTerm[] | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  // Split by + and -, keeping the operators. Reject any other characters.
+  const tokens: string[] = [];
+  let buffer = '';
+  let firstSign: '+' | undefined = undefined;
+
+  let i = 0;
+  // Optional leading '+' (a leading '-' is rejected)
+  if (trimmed[0] === '+') {
+    firstSign = '+';
+    i = 1;
+  } else if (trimmed[0] === '-') {
+    return null;
+  }
+
+  for (; i < trimmed.length; i++) {
+    const c = trimmed[i];
+    if (c === '+' || c === '-') {
+      tokens.push(buffer);
+      buffer = '';
+      tokens.push(c);
+    } else {
+      buffer += c;
+    }
+  }
+  tokens.push(buffer);
+
+  const terms: DiceTerm[] = [];
+  // First token is the first term (no preceding operator in tokens array).
+  const firstTermStr = tokens[0].trim();
+  if (!firstTermStr) return null;
+  const firstMatch = firstTermStr.match(TERM_PATTERN);
+  if (!firstMatch) return null;
+  const firstCount = parseInt(firstMatch[1], 10);
+  const firstSides = parseInt(firstMatch[2], 10);
+  if (firstCount < 1 || firstSides < 2) return null;
+  terms.push({ sign: firstSign ?? '+', count: firstCount, sides: firstSides });
+
+  // Remaining tokens come in (operator, term) pairs.
+  for (let j = 1; j < tokens.length; j += 2) {
+    const op = tokens[j];
+    const termStr = (tokens[j + 1] ?? '').trim();
+    if (!termStr) return null;
+    if (op !== '+' && op !== '-') return null;
+    const m = termStr.match(TERM_PATTERN);
+    if (!m) return null;
+    const count = parseInt(m[1], 10);
+    const sides = parseInt(m[2], 10);
+    if (count < 1 || sides < 2) return null;
+    terms.push({ sign: op, count, sides });
+  }
+
+  return terms;
+}
+
+export function formatDiceExpression(terms: DiceTerm[]): string {
+  if (terms.length === 0) return '';
+  let out = terms[0].count + 'd' + terms[0].sides;
+  for (let k = 1; k < terms.length; k++) {
+    out += ' ' + terms[k].sign + ' ' + terms[k].count + 'd' + terms[k].sides;
+  }
+  return out;
+}
+
 export function parseDiceNotation(input: string): { count: number; sides: number } | null {
-  const match = input.trim().match(/^(\d+)[dD](\d+)$/);
-  if (!match) return null;
-  const count = parseInt(match[1], 10);
-  const sides = parseInt(match[2], 10);
-  if (count < 1 || sides < 2) return null;
-  return { count, sides };
+  const terms = parseDiceExpression(input);
+  if (!terms || terms.length !== 1 || terms[0].sign !== '+') return null;
+  return { count: terms[0].count, sides: terms[0].sides };
 }

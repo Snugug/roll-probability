@@ -6,6 +6,8 @@ import {
   computeDoubleDiceProbabilities,
   computeProbabilities,
   parseDiceNotation,
+  parseDiceExpression,
+  formatDiceExpression,
 } from '../src/engine';
 
 describe('computeNormalProbabilities', () => {
@@ -341,5 +343,97 @@ describe('parseDiceNotation', () => {
     expect(parseDiceNotation('0d6')).toBeNull();
     expect(parseDiceNotation('2d0')).toBeNull();
     expect(parseDiceNotation('2d1')).toBeNull();
+  });
+});
+
+describe('parseDiceExpression', () => {
+  it('parses a single positive term', () => {
+    expect(parseDiceExpression('2d6')).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+  });
+
+  it('parses a single term with explicit leading +', () => {
+    expect(parseDiceExpression('+2d6')).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+  });
+
+  it('parses two terms with subtraction', () => {
+    expect(parseDiceExpression('2d10 - 1d4')).toEqual([
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '-', count: 1, sides: 4 },
+    ]);
+  });
+
+  it('parses two terms with addition', () => {
+    expect(parseDiceExpression('2d10 + 1d6')).toEqual([
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '+', count: 1, sides: 6 },
+    ]);
+  });
+
+  it('parses three terms with mixed signs', () => {
+    expect(parseDiceExpression('2d10 + 1d6 - 1d4')).toEqual([
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '+', count: 1, sides: 6 },
+      { sign: '-', count: 1, sides: 4 },
+    ]);
+  });
+
+  it('tolerates extra whitespace around operators and ends', () => {
+    expect(parseDiceExpression('   2d10  -  1d4  ')).toEqual([
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '-', count: 1, sides: 4 },
+    ]);
+  });
+
+  it('accepts uppercase D', () => {
+    expect(parseDiceExpression('2D6')).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+  });
+
+  it('rejects a leading minus', () => {
+    expect(parseDiceExpression('-2d6')).toBeNull();
+  });
+
+  it('rejects malformed input', () => {
+    expect(parseDiceExpression('')).toBeNull();
+    expect(parseDiceExpression('foo')).toBeNull();
+    expect(parseDiceExpression('2d')).toBeNull();
+    expect(parseDiceExpression('d6')).toBeNull();
+    expect(parseDiceExpression('2d6 +')).toBeNull();
+    expect(parseDiceExpression('2d6 1d4')).toBeNull();
+    expect(parseDiceExpression('2d6 * 1d4')).toBeNull();
+  });
+
+  it('rejects sides < 2 and count < 1', () => {
+    expect(parseDiceExpression('0d6')).toBeNull();
+    expect(parseDiceExpression('2d1')).toBeNull();
+  });
+});
+
+describe('formatDiceExpression', () => {
+  it('formats a single term without leading sign', () => {
+    expect(formatDiceExpression([{ sign: '+', count: 2, sides: 6 }])).toBe('2d6');
+  });
+
+  it('formats two terms with single spaces around operator', () => {
+    expect(formatDiceExpression([
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '-', count: 1, sides: 4 },
+    ])).toBe('2d10 - 1d4');
+  });
+
+  it('formats three terms with mixed signs', () => {
+    expect(formatDiceExpression([
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '+', count: 1, sides: 6 },
+      { sign: '-', count: 1, sides: 4 },
+    ])).toBe('2d10 + 1d6 - 1d4');
+  });
+
+  it('round-trips through parseDiceExpression', () => {
+    const inputs = ['2d6', '2d10 - 1d4', '2d10 + 1d6 - 1d4', '1d20'];
+    for (const input of inputs) {
+      const parsed = parseDiceExpression(input);
+      expect(parsed).not.toBeNull();
+      expect(formatDiceExpression(parsed!)).toBe(input);
+    }
   });
 });
