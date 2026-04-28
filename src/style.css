@@ -222,6 +222,14 @@ dice-row {
   border-radius: 4px;
   padding: 1px 6px;
   font-weight: 400;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+}
+
+.dice-notation-badge:focus {
+  outline: none;
+  border-color: #4ade80;
 }
 
 .dice-ranges {
