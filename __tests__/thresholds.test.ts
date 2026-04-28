@@ -70,38 +70,38 @@ describe('built-in presets', () => {
 
 describe('mapThresholds', () => {
   it('maps PbtA (2d6) to itself (identity)', () => {
-    const result = mapThresholds(PBTA_PRESET, 2, 6);
+    const result = mapThresholds(PBTA_PRESET, [{ sign: '+', count: 2, sides: 6 }]);
     expect(result).toEqual([7, 10]);
   });
 
   it('maps D&D (1d20) to itself (identity)', () => {
-    const result = mapThresholds(DND_PRESET, 1, 20);
+    const result = mapThresholds(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]);
     expect(result).toEqual([5, 10, 15, 20, 25, 30]);
   });
 
   it('returns thresholds unchanged when referenceDie is invalid', () => {
     const preset: ThresholdPreset = { name: 'Bad', referenceDie: 'invalid', thresholds: [5, 10], categories: [], criticals: { type: 'none' } };
-    const result = mapThresholds(preset, 2, 6);
+    const result = mapThresholds(preset, [{ sign: '+', count: 2, sides: 6 }]);
     expect(result).toEqual([5, 10]);
   });
 
   it('maps D&D to 2d6 using linear proportional formula', () => {
-    const result = mapThresholds(DND_PRESET, 2, 6);
+    const result = mapThresholds(DND_PRESET, [{ sign: '+', count: 2, sides: 6 }]);
     expect(result).toEqual([4, 7, 9, 12, 15, 17]);
   });
 
   it('maps PbtA to 1d20', () => {
-    const result = mapThresholds(PBTA_PRESET, 1, 20);
+    const result = mapThresholds(PBTA_PRESET, [{ sign: '+', count: 1, sides: 20 }]);
     expect(result).toEqual([11, 16]);
   });
 
   it('maps PbtA to 2d12', () => {
-    const result = mapThresholds(PBTA_PRESET, 2, 12);
+    const result = mapThresholds(PBTA_PRESET, [{ sign: '+', count: 2, sides: 12 }]);
     expect(result).toEqual([13, 20]);
   });
 
   it('preserves ascending order', () => {
-    const result = mapThresholds(DND_PRESET, 2, 6);
+    const result = mapThresholds(DND_PRESET, [{ sign: '+', count: 2, sides: 6 }]);
     for (let i = 1; i < result.length; i++) {
       expect(result[i]).toBeGreaterThan(result[i - 1]);
     }
@@ -120,12 +120,12 @@ describe('built-in preset criticals', () => {
 
 describe('mapCriticals', () => {
   it('maps D&D natural crits from 1d20 to 2d10 (hit=20->20, miss=1->2)', () => {
-    const result = mapCriticals(DND_PRESET, 2, 10);
+    const result = mapCriticals(DND_PRESET, [{ sign: '+', count: 2, sides: 10 }]);
     expect(result).toEqual({ type: 'natural', hit: 20, miss: 2 });
   });
 
   it('maps D&D natural crits to itself (identity)', () => {
-    const result = mapCriticals(DND_PRESET, 1, 20);
+    const result = mapCriticals(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]);
     expect(result).toEqual({ type: 'natural', hit: 20, miss: 1 });
   });
 
@@ -137,7 +137,7 @@ describe('mapCriticals', () => {
       categories: [],
       criticals: { type: 'none' },
     };
-    const result = mapCriticals(preset, 1, 20);
+    const result = mapCriticals(preset, [{ sign: '+', count: 1, sides: 20 }]);
     expect(result).toEqual({ type: 'none' });
   });
 
@@ -149,7 +149,7 @@ describe('mapCriticals', () => {
       categories: [],
       criticals: { type: 'natural', hit: 20, miss: 1 },
     };
-    const result = mapCriticals(preset, 2, 6);
+    const result = mapCriticals(preset, [{ sign: '+', count: 2, sides: 6 }]);
     expect(result).toEqual({ type: 'natural', hit: 20, miss: 1 });
   });
 });
@@ -714,8 +714,8 @@ describe('syncConfigsToPresets', () => {
       makeConfig({ id: 1, presetName: 'D&D', count: 1, sides: 20, thresholds: [99], criticals: { type: 'none' } }),
     ];
     syncConfigsToPresets(configs, []);
-    expect(configs[0].thresholds).toEqual(mapThresholds(DND_PRESET, 1, 20));
-    expect(configs[0].criticals).toEqual(mapCriticals(DND_PRESET, 1, 20));
+    expect(configs[0].thresholds).toEqual(mapThresholds(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]));
+    expect(configs[0].criticals).toEqual(mapCriticals(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]));
     expect(configs[0].categories).toEqual(DND_PRESET.categories);
     expect(configs[0].advantageMethod).toBe(DND_PRESET.advantageMethod);
     expect(configs[0].disadvantageMethod).toBe(DND_PRESET.disadvantageMethod);
@@ -783,5 +783,32 @@ describe('syncConfigsToPresets', () => {
     syncConfigsToPresets(configs, []);
     expect(configs[0].minMod).toBe(-10);
     expect(configs[0].maxMod).toBe(20);
+  });
+});
+
+describe('mapThresholds with multi-term', () => {
+  it('scales to first-group range only', () => {
+    // PBTA reference is 2d6 (range 2..12, thresholds [7, 10]).
+    // Target: 2d10 - 1d4 — should scale to first group's 2..20.
+    const result = mapThresholds(PBTA_PRESET, [
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '-', count: 1, sides: 4 },
+    ]);
+    const refSingle = mapThresholds(PBTA_PRESET, [
+      { sign: '+', count: 2, sides: 10 },
+    ]);
+    expect(result).toEqual(refSingle);
+  });
+});
+
+describe('mapCriticals with multi-term', () => {
+  it('scales natural crit values to first-group range only', () => {
+    // D&D reference is 1d20 (range 1..20, hit=20 miss=1).
+    // Target: 2d10 - 1d4 — first group 2d10 has range 2..20, so hit→20, miss→2.
+    const result = mapCriticals(DND_PRESET, [
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '-', count: 1, sides: 4 },
+    ]);
+    expect(result).toEqual({ type: 'natural', hit: 20, miss: 2 });
   });
 });

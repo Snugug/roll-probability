@@ -21,7 +21,7 @@ import './style.css';
 
 function buildConfig(label: string): Omit<DiceConfig, 'id'> {
   const parsed = parseDiceNotation(label)!;
-  const thresholds = mapThresholds(PBTA_PRESET, parsed.count, parsed.sides);
+  const thresholds = mapThresholds(PBTA_PRESET, [{ sign: '+', count: parsed.count, sides: parsed.sides }]);
   return {
     count: parsed.count,
     sides: parsed.sides,

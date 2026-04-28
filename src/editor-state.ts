@@ -37,9 +37,9 @@ export class ThresholdEditorState {
 
   switchToBuiltinPreset(preset: ThresholdPreset): void {
     this.presetName = preset.name;
-    this.config.thresholds = mapThresholds(preset, this.config.count, this.config.sides);
+    this.config.thresholds = mapThresholds(preset, [{ sign: '+', count: this.config.count, sides: this.config.sides }]);
     this.config.categories = preset.categories.map(c => ({ ...c }));
-    this.config.criticals = mapCriticals(preset, this.config.count, this.config.sides);
+    this.config.criticals = mapCriticals(preset, [{ sign: '+', count: this.config.count, sides: this.config.sides }]);
     this.config.advantageMethod = preset.advantageMethod;
     this.config.disadvantageMethod = preset.disadvantageMethod;
     this._onChange('structure');

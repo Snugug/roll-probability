@@ -1,5 +1,5 @@
-import { parseDiceNotation, type CriticalConfig, type AdvantageMethod, type DisadvantageMethod } from './engine';
-export type { CriticalConfig, AdvantageMethod, DisadvantageMethod } from './engine';
+import { parseDiceNotation, type CriticalConfig, type AdvantageMethod, type DisadvantageMethod, type DiceTerm } from './engine';
+export type { CriticalConfig, AdvantageMethod, DisadvantageMethod, DiceTerm } from './engine';
 
 export interface SavedSettings {
   diceList: number[];
@@ -112,9 +112,9 @@ export function syncConfigsToPresets(
 
     const builtin = BUILTIN_PRESETS.find(p => p.name === presetName);
     if (builtin) {
-      config.thresholds = mapThresholds(builtin, config.count, config.sides);
+      config.thresholds = mapThresholds(builtin, [{ sign: '+', count: config.count, sides: config.sides }]);
       config.categories = builtin.categories.map(c => ({ ...c }));
-      config.criticals = mapCriticals(builtin, config.count, config.sides);
+      config.criticals = mapCriticals(builtin, [{ sign: '+', count: config.count, sides: config.sides }]);
       config.advantageMethod = builtin.advantageMethod;
       config.disadvantageMethod = builtin.disadvantageMethod;
       continue;
@@ -145,26 +145,24 @@ function scaleValue(value: number, ref: { min: number; range: number }, target: 
 
 export function mapThresholds(
   preset: ThresholdPreset,
-  targetCount: number,
-  targetSides: number
+  terms: DiceTerm[],
 ): number[] {
   const parsed = parseDiceNotation(preset.referenceDie);
   if (!parsed) return preset.thresholds;
   const ref = diceRange(parsed.count, parsed.sides);
-  const target = diceRange(targetCount, targetSides);
+  const target = diceRange(terms[0].count, terms[0].sides);
   return preset.thresholds.map(t => scaleValue(t, ref, target));
 }
 
 export function mapCriticals(
   preset: ThresholdPreset,
-  targetCount: number,
-  targetSides: number
+  terms: DiceTerm[],
 ): CriticalConfig {
   if (preset.criticals.type !== 'natural') return preset.criticals;
   const parsed = parseDiceNotation(preset.referenceDie);
   if (!parsed) return preset.criticals;
   const ref = diceRange(parsed.count, parsed.sides);
-  const target = diceRange(targetCount, targetSides);
+  const target = diceRange(terms[0].count, terms[0].sides);
   return {
     type: 'natural',
     hit: scaleValue(preset.criticals.hit, ref, target),
