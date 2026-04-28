@@ -54,54 +54,78 @@ function classifyValue(val: number, thresholds: number[]): number {
 }
 
 function classifyOutcomes(
-  numDice: number,
-  sides: number,
+  terms: DiceTerm[],
+  firstGroupCount: number,
   thresholds: number[],
   modifier: number,
-  sumFn: (dice: number[]) => number,
+  sumFn: (firstGroupDice: number[]) => number,
   criticals: CriticalConfig = { type: 'none' },
-  keptDiceFn: (dice: number[]) => number[] = keepAll
+  keptDiceFn: (firstGroupDice: number[]) => number[] = keepAll
 ): ProbabilityResult {
   const numCategories = thresholds.length + 1;
   const counts = new Array<number>(numCategories).fill(0);
   const critHitCounts = new Array<number>(numCategories).fill(0);
   const critMissCounts = new Array<number>(numCategories).fill(0);
   let total = 0;
-  const dice = new Array<number>(numDice);
 
-  function recurse(depth: number): void {
-    if (depth === numDice) {
+  const firstSides = terms[0].sides;
+  const firstGroupDice = new Array<number>(firstGroupCount);
+  const extraTerms = terms.slice(1);
+  const extraDice: number[][] = extraTerms.map(t => new Array<number>(t.count));
+
+  function recurseExtras(termIdx: number, dieIdx: number, extrasSum: number): void {
+    if (termIdx >= extraTerms.length) {
       total++;
-      const rawSum = sumFn(dice);
-      const sum = rawSum + modifier;
+      const firstGroupSum = sumFn(firstGroupDice);
+      const sum = firstGroupSum + extrasSum + modifier;
       const catIndex = classifyValue(sum, thresholds);
       counts[catIndex]++;
 
       if (criticals.type === 'natural') {
-        if (rawSum === criticals.hit) critHitCounts[catIndex]++;
-        if (rawSum === criticals.miss) critMissCounts[catIndex]++;
+        let rawFirstSum = 0;
+        for (let i = 0; i < firstGroupDice.length; i++) rawFirstSum += firstGroupDice[i];
+        if (rawFirstSum === criticals.hit) critHitCounts[catIndex]++;
+        if (rawFirstSum === criticals.miss) critMissCounts[catIndex]++;
       } else if (criticals.type === 'conditional-doubles') {
-        const kept = keptDiceFn(dice);
+        const kept = keptDiceFn(firstGroupDice);
         if (hasDoubles(kept)) {
           if (catIndex === criticals.hit) critHitCounts[catIndex]++;
           if (catIndex === criticals.miss) critMissCounts[catIndex]++;
         }
       } else if (criticals.type === 'doubles') {
-        const kept = keptDiceFn(dice);
+        const kept = keptDiceFn(firstGroupDice);
         if (hasDoubles(kept)) {
           critHitCounts[catIndex]++;
         }
       }
-
       return;
     }
-    for (let v = 1; v <= sides; v++) {
-      dice[depth] = v;
-      recurse(depth + 1);
+    const term = extraTerms[termIdx];
+    if (dieIdx === term.count) {
+      let termSum = 0;
+      for (let i = 0; i < term.count; i++) termSum += extraDice[termIdx][i];
+      const signedTermSum = term.sign === '+' ? termSum : -termSum;
+      recurseExtras(termIdx + 1, 0, extrasSum + signedTermSum);
+      return;
+    }
+    for (let v = 1; v <= term.sides; v++) {
+      extraDice[termIdx][dieIdx] = v;
+      recurseExtras(termIdx, dieIdx + 1, extrasSum);
     }
   }
 
-  recurse(0);
+  function recurseFirst(depth: number): void {
+    if (depth === firstGroupCount) {
+      recurseExtras(0, 0, 0);
+      return;
+    }
+    for (let v = 1; v <= firstSides; v++) {
+      firstGroupDice[depth] = v;
+      recurseFirst(depth + 1);
+    }
+  }
+
+  recurseFirst(0);
 
   return {
     categories: counts.map(c => (c / total) * 100),
@@ -137,10 +161,10 @@ function sumDropHighest(dice: number[]): number {
 }
 
 export function computeNormalProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number,
+  terms: DiceTerm[], thresholds: number[], modifier: number,
   criticals: CriticalConfig = { type: 'none' }
 ): ProbabilityResult {
-  return classifyOutcomes(count, sides, thresholds, modifier, sumAll, criticals);
+  return classifyOutcomes(terms, terms[0].count, thresholds, modifier, sumAll, criticals);
 }
 
 function makeForcingFns(
@@ -206,50 +230,50 @@ function makeForcingDisFns(
 }
 
 export function computeAdvantageProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number,
+  terms: DiceTerm[], thresholds: number[], modifier: number,
   criticals: CriticalConfig = { type: 'none' }
 ): ProbabilityResult {
   if (criticals.type === 'conditional-doubles') {
     const { sumFn, keptFn } = makeForcingAdvFns(thresholds, modifier, criticals.hit);
-    return classifyOutcomes(count + 1, sides, thresholds, modifier, sumFn, criticals, keptFn);
+    return classifyOutcomes(terms, terms[0].count + 1, thresholds, modifier, sumFn, criticals, keptFn);
   }
-  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropLowest, criticals, keepDropLowest);
+  return classifyOutcomes(terms, terms[0].count + 1, thresholds, modifier, sumDropLowest, criticals, keepDropLowest);
 }
 
 export function computeDisadvantageProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number,
+  terms: DiceTerm[], thresholds: number[], modifier: number,
   criticals: CriticalConfig = { type: 'none' }
 ): ProbabilityResult {
   if (criticals.type === 'conditional-doubles') {
     const { sumFn, keptFn } = makeForcingDisFns(thresholds, modifier, criticals.miss);
-    return classifyOutcomes(count + 1, sides, thresholds, modifier, sumFn, criticals, keptFn);
+    return classifyOutcomes(terms, terms[0].count + 1, thresholds, modifier, sumFn, criticals, keptFn);
   }
-  return classifyOutcomes(count + 1, sides, thresholds, modifier, sumDropHighest, criticals, keepDropHighest);
+  return classifyOutcomes(terms, terms[0].count + 1, thresholds, modifier, sumDropHighest, criticals, keepDropHighest);
 }
 
 export function computeDoubleDiceProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number,
+  terms: DiceTerm[], thresholds: number[], modifier: number,
   criticals: CriticalConfig = { type: 'none' }
 ): ProbabilityResult {
-  return classifyOutcomes(count * 2, sides, thresholds, modifier, sumAll, criticals);
+  return classifyOutcomes(terms, terms[0].count * 2, thresholds, modifier, sumAll, criticals);
 }
 
 export function computeProbabilities(
-  count: number, sides: number, thresholds: number[], modifier: number, mode: RollMode,
+  terms: DiceTerm[], thresholds: number[], modifier: number, mode: RollMode,
   criticals: CriticalConfig = { type: 'none' },
   advantageMethod: AdvantageMethod = 'plus-one-drop-low',
   disadvantageMethod: DisadvantageMethod = 'plus-one-drop-high',
 ): ProbabilityResult {
   switch (mode) {
     case 'normal':
-      return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
+      return computeNormalProbabilities(terms, thresholds, modifier, criticals);
     case 'advantage':
-      if (advantageMethod === 'none') return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
-      if (advantageMethod === 'double-dice') return computeDoubleDiceProbabilities(count, sides, thresholds, modifier, criticals);
-      return computeAdvantageProbabilities(count, sides, thresholds, modifier, criticals);
+      if (advantageMethod === 'none') return computeNormalProbabilities(terms, thresholds, modifier, criticals);
+      if (advantageMethod === 'double-dice') return computeDoubleDiceProbabilities(terms, thresholds, modifier, criticals);
+      return computeAdvantageProbabilities(terms, thresholds, modifier, criticals);
     case 'disadvantage':
-      if (disadvantageMethod === 'none') return computeNormalProbabilities(count, sides, thresholds, modifier, criticals);
-      return computeDisadvantageProbabilities(count, sides, thresholds, modifier, criticals);
+      if (disadvantageMethod === 'none') return computeNormalProbabilities(terms, thresholds, modifier, criticals);
+      return computeDisadvantageProbabilities(terms, thresholds, modifier, criticals);
   }
 }
 
