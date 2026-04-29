@@ -14,6 +14,7 @@ import {
   type SavedDiceThreshold,
 } from './thresholds';
 import { renderPage } from './renderer';
+import { computeInsertIndex } from './components/dice-row';
 import { createDownloadSvg, createUploadSvg } from './components/icons';
 import { exportConfig, importConfig, applyImport } from './import-export';
 import { showToast } from './components/toast';
@@ -103,6 +104,37 @@ export async function init(): Promise<void> {
   let showDisadvantage = settings?.showDisadvantage ?? true;
 
   const rowsContainer = document.getElementById('dice-rows')!;
+
+  rowsContainer.addEventListener('dice-reorder', (e) => {
+    const detail = (e as CustomEvent).detail as {
+      fromId: number;
+      toId: number;
+      position: 'before' | 'after';
+    };
+    const { fromId, toId, position } = detail;
+
+    const fromIdx = diceConfigs.findIndex(c => c.id === fromId);
+    const toIdx = diceConfigs.findIndex(c => c.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const insertIdx = computeInsertIndex(fromIdx, toIdx, position);
+    if (insertIdx === fromIdx) return;
+
+    const [moved] = diceConfigs.splice(fromIdx, 1);
+    diceConfigs.splice(insertIdx, 0, moved);
+
+    const fromRow = rowsContainer.querySelector(`dice-row[data-id="${fromId}"]`);
+    const toRow = rowsContainer.querySelector(`dice-row[data-id="${toId}"]`);
+    if (fromRow && toRow) {
+      rowsContainer.insertBefore(
+        fromRow,
+        position === 'before' ? toRow : toRow.nextSibling
+      );
+    }
+
+    save();
+  });
+
   const advToggle = document.getElementById('adv-toggle') as HTMLButtonElement;
   const disToggle = document.getElementById('dis-toggle') as HTMLButtonElement;
   const diceInput = document.getElementById('dice-input') as HTMLInputElement;

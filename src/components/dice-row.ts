@@ -41,6 +41,7 @@ export class DiceRowElement extends HTMLElement {
   }
 
   connectedCallback() {
+    this.dataset.id = String(this.config.id);
     this._state = new ThresholdEditorState(this.config, (kind) => {
       if (kind === 'structure') {
         this._buildDialogContent();
