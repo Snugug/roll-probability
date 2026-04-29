@@ -5,7 +5,7 @@ import { renderPage } from '../src/renderer';
 
 const config2d6: DiceConfig = {
   id: 1, name: '2d6',
-  count: 2, sides: 6, label: '2d6',
+  terms: [{ sign: '+', count: 2, sides: 6 }], label: '2d6',
   thresholds: [7, 10],
   categories: [
     { label: 'Miss', color: '#f87171' },
@@ -19,7 +19,7 @@ const config2d6: DiceConfig = {
 
 const config1d20: DiceConfig = {
   id: 2, name: '1d20',
-  count: 1, sides: 20, label: '1d20',
+  terms: [{ sign: '+', count: 1, sides: 20 }], label: '1d20',
   thresholds: [5, 10, 15, 20, 25, 30],
   categories: [
     { label: 'Trivial', color: '#94a3b8' },
@@ -154,8 +154,8 @@ describe('dialog', () => {
     const nameInput = title.querySelector('.dice-name-input') as HTMLInputElement;
     expect(nameInput.value).toBe('2d6');
     expect(title.textContent).toContain('Thresholds');
-    const badge = title.querySelector('.dice-notation-badge')!;
-    expect(badge.textContent).toBe('2d6');
+    const badge = title.querySelector('.dice-notation-badge') as HTMLInputElement;
+    expect(badge.value).toBe('2d6');
   });
 
   it('contains .dialog-preview section', () => {
@@ -292,7 +292,7 @@ describe('dialog interactivity', () => {
     // Start with a 2-category config (1 threshold), create custom, remove the threshold, then add
     const twoCategory: DiceConfig = {
       id: 3, name: '1d6',
-      count: 1, sides: 6, label: '1d6',
+      terms: [{ sign: '+', count: 1, sides: 6 }], label: '1d6',
       thresholds: [4],
       categories: [
         { label: 'Low', color: '#ff0000' },
@@ -1016,9 +1016,9 @@ describe('notation badge', () => {
   it('notation badge appears in dialog title', () => {
     renderPage(container, [{ ...config2d6 }], false, false);
     const row = container.querySelector('dice-row') as any;
-    const badge = row._dialog.querySelector('.dice-notation-badge');
+    const badge = row._dialog.querySelector('.dice-notation-badge') as HTMLInputElement;
     expect(badge).toBeTruthy();
-    expect(badge.textContent).toBe('2d6');
+    expect(badge.value).toBe('2d6');
   });
 });
 

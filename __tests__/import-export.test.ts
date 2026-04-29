@@ -35,8 +35,7 @@ describe('buildExportData', () => {
   it('assembles all stores into ExportData format', async () => {
     const id1 = await createDiceThreshold({
       name: '2d6',
-      count: 2,
-      sides: 6,
+      terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'PbtA',
       thresholds: [7, 10],
       categories: [
@@ -62,7 +61,7 @@ describe('buildExportData', () => {
     const { buildExportData } = await import('../src/import-export');
     const data = await buildExportData();
 
-    expect(data.version).toBe(4);
+    expect(data.version).toBe(5);
     expect(data.settings.diceList).toEqual([id1]);
     expect(data.settings.showAdvantage).toBe(true);
     expect(data.settings.showDisadvantage).toBe(false);
@@ -76,7 +75,7 @@ describe('buildExportData', () => {
     const { buildExportData } = await import('../src/import-export');
     const data = await buildExportData();
 
-    expect(data.version).toBe(4);
+    expect(data.version).toBe(5);
     expect(data.settings.diceList).toEqual([]);
     expect(data.dice).toEqual([]);
     expect(data.customPresets).toEqual([]);
@@ -175,16 +174,15 @@ describe('importConfig', () => {
     if (!result.ok) expect(result.error).toBe('Not a valid dice config file');
   });
 
-  it('accepts valid v4 export data', async () => {
+  it('accepts valid v5 export data', async () => {
     const { importConfig } = await import('../src/import-export');
     const data = {
-      version: 4,
+      version: 5,
       settings: { diceList: [1], showAdvantage: true, showDisadvantage: false },
       dice: [{
         id: 1,
         name: '2d6',
-        count: 2,
-        sides: 6,
+        terms: [{ sign: '+', count: 2, sides: 6 }],
         presetName: 'PbtA',
         thresholds: [7, 10],
         categories: [
@@ -220,7 +218,7 @@ describe('importConfig', () => {
     if (!result.ok) expect(result.error).toBe('Something went wrong');
   });
 
-  it('migrates version 3 to version 4', async () => {
+  it('migrates version 3 to version 5', async () => {
     const { importConfig } = await import('../src/import-export');
     const data = {
       version: 3,
@@ -245,10 +243,13 @@ describe('importConfig', () => {
     const file = new File([JSON.stringify(data)], 'v3.json', { type: 'application/json' });
     const result = await importConfig(file);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data.version).toBe(4);
+    if (result.ok) {
+      expect(result.data.version).toBe(5);
+      expect(result.data.dice[0].terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+    }
   });
 
-  it('rejects version > 4 with "Something went wrong"', async () => {
+  it('rejects version > 5 with "Something went wrong"', async () => {
     const { importConfig } = await import('../src/import-export');
     const data = {
       version: 99,
@@ -263,6 +264,41 @@ describe('importConfig', () => {
   });
 });
 
+describe('v4 → v5 import migration', () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    await clearIndexedDB();
+  });
+
+  it('migrates legacy count/sides records to terms', async () => {
+    const file = new File([JSON.stringify({
+      version: 4,
+      settings: { diceList: [], showAdvantage: true, showDisadvantage: true },
+      dice: [{
+        id: 1,
+        name: '2d6',
+        count: 2,
+        sides: 6,
+        presetName: 'PbtA',
+        thresholds: [7, 10],
+        categories: [],
+        minMod: -2,
+        maxMod: 5,
+      }],
+      customPresets: [],
+    })], 'config.json', { type: 'application/json' });
+
+    const { importConfig } = await import('../src/import-export');
+    const result = await importConfig(file);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.version).toBe(5);
+    expect(result.data.dice[0].terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+    expect((result.data.dice[0] as any).count).toBeUndefined();
+    expect((result.data.dice[0] as any).sides).toBeUndefined();
+  });
+});
+
 describe('applyImport', () => {
   beforeEach(async () => {
     vi.resetModules();
@@ -272,14 +308,13 @@ describe('applyImport', () => {
   it('writes dice, presets, and settings to IndexedDB with new IDs', async () => {
     const { applyImport } = await import('../src/import-export');
     const data = {
-      version: 4,
+      version: 5,
       settings: { diceList: [100, 200], showAdvantage: false, showDisadvantage: true },
       dice: [
         {
           id: 100,
           name: '2d6',
-          count: 2,
-          sides: 6,
+          terms: [{ sign: '+', count: 2, sides: 6 }],
           presetName: 'PbtA',
           thresholds: [7, 10],
           categories: [
@@ -293,8 +328,7 @@ describe('applyImport', () => {
         {
           id: 200,
           name: '1d20',
-          count: 1,
-          sides: 20,
+          terms: [{ sign: '+', count: 1, sides: 20 }],
           presetName: 'D&D',
           thresholds: [5, 10, 15, 20, 25, 30],
           categories: [
@@ -351,8 +385,7 @@ describe('applyImport', () => {
     // Pre-populate DB
     const existingId = await createDiceThreshold({
       name: 'old',
-      count: 1,
-      sides: 4,
+      terms: [{ sign: '+', count: 1, sides: 4 }],
       presetName: 'PbtA',
       thresholds: [3],
       categories: [{ label: 'A', color: '#aaa' }, { label: 'B', color: '#bbb' }],
@@ -363,13 +396,12 @@ describe('applyImport', () => {
 
     const { applyImport } = await import('../src/import-export');
     await applyImport({
-      version: 4,
+      version: 5,
       settings: { diceList: [1], showAdvantage: false, showDisadvantage: false },
       dice: [{
         id: 1,
         name: 'new',
-        count: 3,
-        sides: 8,
+        terms: [{ sign: '+', count: 3, sides: 8 }],
         presetName: 'PbtA',
         thresholds: [7, 10],
         categories: [

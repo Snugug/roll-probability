@@ -1,5 +1,5 @@
-import { parseDiceNotation, type CriticalConfig, type AdvantageMethod, type DisadvantageMethod } from './engine';
-export type { CriticalConfig, AdvantageMethod, DisadvantageMethod } from './engine';
+import { parseDiceNotation, type CriticalConfig, type AdvantageMethod, type DisadvantageMethod, type DiceTerm } from './engine';
+export type { CriticalConfig, AdvantageMethod, DisadvantageMethod, DiceTerm } from './engine';
 
 export interface SavedSettings {
   diceList: number[];
@@ -10,8 +10,7 @@ export interface SavedSettings {
 export interface SavedDiceThreshold {
   id?: number;
   name: string;
-  count: number;
-  sides: number;
+  terms: DiceTerm[];
   presetName: string;
   categories: ThresholdCategory[];
   thresholds: number[];
@@ -54,8 +53,7 @@ export interface ThresholdPreset {
 export interface DiceConfig {
   id: number;
   name: string;
-  count: number;
-  sides: number;
+  terms: DiceTerm[];
   label: string;
   thresholds: number[];
   categories: ThresholdCategory[];
@@ -112,9 +110,9 @@ export function syncConfigsToPresets(
 
     const builtin = BUILTIN_PRESETS.find(p => p.name === presetName);
     if (builtin) {
-      config.thresholds = mapThresholds(builtin, config.count, config.sides);
+      config.thresholds = mapThresholds(builtin, config.terms);
       config.categories = builtin.categories.map(c => ({ ...c }));
-      config.criticals = mapCriticals(builtin, config.count, config.sides);
+      config.criticals = mapCriticals(builtin, config.terms);
       config.advantageMethod = builtin.advantageMethod;
       config.disadvantageMethod = builtin.disadvantageMethod;
       continue;
@@ -145,26 +143,24 @@ function scaleValue(value: number, ref: { min: number; range: number }, target: 
 
 export function mapThresholds(
   preset: ThresholdPreset,
-  targetCount: number,
-  targetSides: number
+  terms: DiceTerm[],
 ): number[] {
   const parsed = parseDiceNotation(preset.referenceDie);
   if (!parsed) return preset.thresholds;
   const ref = diceRange(parsed.count, parsed.sides);
-  const target = diceRange(targetCount, targetSides);
+  const target = diceRange(terms[0].count, terms[0].sides);
   return preset.thresholds.map(t => scaleValue(t, ref, target));
 }
 
 export function mapCriticals(
   preset: ThresholdPreset,
-  targetCount: number,
-  targetSides: number
+  terms: DiceTerm[],
 ): CriticalConfig {
   if (preset.criticals.type !== 'natural') return preset.criticals;
   const parsed = parseDiceNotation(preset.referenceDie);
   if (!parsed) return preset.criticals;
   const ref = diceRange(parsed.count, parsed.sides);
-  const target = diceRange(targetCount, targetSides);
+  const target = diceRange(terms[0].count, terms[0].sides);
   return {
     type: 'natural',
     hit: scaleValue(preset.criticals.hit, ref, target),
@@ -173,7 +169,7 @@ export function mapCriticals(
 }
 
 const DB_NAME = 'dice-visualizer';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -216,6 +212,25 @@ export function openDB(): Promise<IDBDatabase> {
           keyPath: 'id',
           autoIncrement: true,
         });
+      }
+
+      if (oldVersion < 5) {
+        if (db.objectStoreNames.contains('diceThresholds')) {
+          const store = request.transaction!.objectStore('diceThresholds');
+          const cursorReq = store.openCursor();
+          cursorReq.onsuccess = () => {
+            const cursor = cursorReq.result;
+            if (!cursor) return;
+            const rec = cursor.value;
+            if (rec && rec.terms === undefined && typeof rec.count === 'number' && typeof rec.sides === 'number') {
+              rec.terms = [{ sign: '+', count: rec.count, sides: rec.sides }];
+              delete rec.count;
+              delete rec.sides;
+              cursor.update(rec);
+            }
+            cursor.continue();
+          };
+        }
       }
     };
     request.onsuccess = () => resolve(request.result);

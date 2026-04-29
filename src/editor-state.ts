@@ -9,7 +9,9 @@ import {
   type SavedCustomPreset,
   type AdvantageMethod,
   type DisadvantageMethod,
+  type DiceTerm,
 } from './thresholds';
+import { formatDiceExpression } from './engine';
 
 export type EditorChangeKind = 'value' | 'structure';
 
@@ -37,9 +39,9 @@ export class ThresholdEditorState {
 
   switchToBuiltinPreset(preset: ThresholdPreset): void {
     this.presetName = preset.name;
-    this.config.thresholds = mapThresholds(preset, this.config.count, this.config.sides);
+    this.config.thresholds = mapThresholds(preset, this.config.terms);
     this.config.categories = preset.categories.map(c => ({ ...c }));
-    this.config.criticals = mapCriticals(preset, this.config.count, this.config.sides);
+    this.config.criticals = mapCriticals(preset, this.config.terms);
     this.config.advantageMethod = preset.advantageMethod;
     this.config.disadvantageMethod = preset.disadvantageMethod;
     this._onChange('structure');
@@ -97,7 +99,8 @@ export class ThresholdEditorState {
     if (type === 'none') {
       this.config.criticals = { type: 'none' };
     } else if (type === 'natural') {
-      this.config.criticals = { type: 'natural', hit: this.config.count * this.config.sides, miss: this.config.count };
+      const first = this.config.terms[0];
+      this.config.criticals = { type: 'natural', hit: first.count * first.sides, miss: first.count };
     } else if (type === 'conditional-doubles') {
       this.config.criticals = { type: 'conditional-doubles', hit: this.config.categories.length - 1, miss: 0 };
     } else if (type === 'doubles') {
@@ -152,11 +155,33 @@ export class ThresholdEditorState {
     this._persistAndNotify('value');
   }
 
+  setTerms(terms: DiceTerm[]): void {
+    if (terms.length === 0) return;
+    const prevFirst = this.config.terms[0];
+    const newFirst = terms[0];
+    const firstChanged = prevFirst.count !== newFirst.count || prevFirst.sides !== newFirst.sides;
+
+    this.config.terms = terms;
+    this.config.label = formatDiceExpression(terms);
+
+    if (firstChanged && this.isBuiltin) {
+      const builtin = BUILTIN_PRESETS.find(p => p.name === this.presetName);
+      if (builtin) {
+        this.config.thresholds = mapThresholds(builtin, terms);
+        this.config.criticals = mapCriticals(builtin, terms);
+      }
+    }
+
+    this._persistAndNotify('structure');
+  }
+
   createCustomPreset(): void {
     const name = 'Custom ' + Date.now();
+    const first = this.config.terms[0];
+    const referenceDie = first.count + 'd' + first.sides;
     const newPreset: SavedCustomPreset = {
       name,
-      referenceDie: this.config.label,
+      referenceDie,
       thresholds: [...this.config.thresholds],
       categories: this.config.categories.map(c => ({ ...c })),
       criticals: this.config.criticals,

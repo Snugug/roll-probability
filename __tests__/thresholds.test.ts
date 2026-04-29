@@ -70,38 +70,38 @@ describe('built-in presets', () => {
 
 describe('mapThresholds', () => {
   it('maps PbtA (2d6) to itself (identity)', () => {
-    const result = mapThresholds(PBTA_PRESET, 2, 6);
+    const result = mapThresholds(PBTA_PRESET, [{ sign: '+', count: 2, sides: 6 }]);
     expect(result).toEqual([7, 10]);
   });
 
   it('maps D&D (1d20) to itself (identity)', () => {
-    const result = mapThresholds(DND_PRESET, 1, 20);
+    const result = mapThresholds(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]);
     expect(result).toEqual([5, 10, 15, 20, 25, 30]);
   });
 
   it('returns thresholds unchanged when referenceDie is invalid', () => {
     const preset: ThresholdPreset = { name: 'Bad', referenceDie: 'invalid', thresholds: [5, 10], categories: [], criticals: { type: 'none' } };
-    const result = mapThresholds(preset, 2, 6);
+    const result = mapThresholds(preset, [{ sign: '+', count: 2, sides: 6 }]);
     expect(result).toEqual([5, 10]);
   });
 
   it('maps D&D to 2d6 using linear proportional formula', () => {
-    const result = mapThresholds(DND_PRESET, 2, 6);
+    const result = mapThresholds(DND_PRESET, [{ sign: '+', count: 2, sides: 6 }]);
     expect(result).toEqual([4, 7, 9, 12, 15, 17]);
   });
 
   it('maps PbtA to 1d20', () => {
-    const result = mapThresholds(PBTA_PRESET, 1, 20);
+    const result = mapThresholds(PBTA_PRESET, [{ sign: '+', count: 1, sides: 20 }]);
     expect(result).toEqual([11, 16]);
   });
 
   it('maps PbtA to 2d12', () => {
-    const result = mapThresholds(PBTA_PRESET, 2, 12);
+    const result = mapThresholds(PBTA_PRESET, [{ sign: '+', count: 2, sides: 12 }]);
     expect(result).toEqual([13, 20]);
   });
 
   it('preserves ascending order', () => {
-    const result = mapThresholds(DND_PRESET, 2, 6);
+    const result = mapThresholds(DND_PRESET, [{ sign: '+', count: 2, sides: 6 }]);
     for (let i = 1; i < result.length; i++) {
       expect(result[i]).toBeGreaterThan(result[i - 1]);
     }
@@ -120,12 +120,12 @@ describe('built-in preset criticals', () => {
 
 describe('mapCriticals', () => {
   it('maps D&D natural crits from 1d20 to 2d10 (hit=20->20, miss=1->2)', () => {
-    const result = mapCriticals(DND_PRESET, 2, 10);
+    const result = mapCriticals(DND_PRESET, [{ sign: '+', count: 2, sides: 10 }]);
     expect(result).toEqual({ type: 'natural', hit: 20, miss: 2 });
   });
 
   it('maps D&D natural crits to itself (identity)', () => {
-    const result = mapCriticals(DND_PRESET, 1, 20);
+    const result = mapCriticals(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]);
     expect(result).toEqual({ type: 'natural', hit: 20, miss: 1 });
   });
 
@@ -137,7 +137,7 @@ describe('mapCriticals', () => {
       categories: [],
       criticals: { type: 'none' },
     };
-    const result = mapCriticals(preset, 1, 20);
+    const result = mapCriticals(preset, [{ sign: '+', count: 1, sides: 20 }]);
     expect(result).toEqual({ type: 'none' });
   });
 
@@ -149,7 +149,7 @@ describe('mapCriticals', () => {
       categories: [],
       criticals: { type: 'natural', hit: 20, miss: 1 },
     };
-    const result = mapCriticals(preset, 2, 6);
+    const result = mapCriticals(preset, [{ sign: '+', count: 2, sides: 6 }]);
     expect(result).toEqual({ type: 'natural', hit: 20, miss: 1 });
   });
 });
@@ -179,12 +179,12 @@ describe('IndexedDB persistence', () => {
 
   it('saveSettings and loadSettings round-trip', async () => {
     const id1 = await createDiceThreshold({
-      name: '1d6', count: 1, sides: 6,
+      name: '1d6', terms: [{ sign: '+', count: 1, sides: 6 }],
       presetName: 'PbtA', categories: [], thresholds: [],
       minMod: 0, maxMod: 0,
     });
     const id2 = await createDiceThreshold({
-      name: '1d8', count: 1, sides: 8,
+      name: '1d8', terms: [{ sign: '+', count: 1, sides: 8 }],
       presetName: 'PbtA', categories: [], thresholds: [],
       minMod: 0, maxMod: 0,
     });
@@ -201,8 +201,7 @@ describe('IndexedDB persistence', () => {
   it('createDiceThreshold and loadDiceThresholds round-trip', async () => {
     const config = {
       name: '2d6',
-      count: 2,
-      sides: 6,
+      terms: [{ sign: '+' as const, count: 2, sides: 6 }],
       presetName: 'PbtA',
       categories: [
         { label: 'Miss', color: '#f87171' },
@@ -217,21 +216,20 @@ describe('IndexedDB persistence', () => {
     const loaded = await loadDiceThresholds(id);
     expect(loaded).not.toBeNull();
     expect(loaded!.name).toBe('2d6');
-    expect(loaded!.count).toBe(2);
-    expect(loaded!.sides).toBe(6);
+    expect(loaded!.terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
     expect(loaded!.thresholds).toEqual([7, 10]);
   });
 
   it('saveDiceThresholds updates existing entry by id', async () => {
     const id = await createDiceThreshold({
-      name: '2d6', count: 2, sides: 6,
+      name: '2d6', terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'PbtA',
       categories: [{ label: 'Miss', color: '#f87171' }],
       thresholds: [7],
       minMod: -2, maxMod: 5,
     });
     await saveDiceThresholds({
-      id, name: 'Attack', count: 2, sides: 6,
+      id, name: 'Attack', terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'Custom',
       categories: [{ label: 'Miss', color: '#ff0000' }],
       thresholds: [8],
@@ -244,7 +242,7 @@ describe('IndexedDB persistence', () => {
 
   it('deleteDiceThreshold removes the entry', async () => {
     const id = await createDiceThreshold({
-      name: '2d6', count: 2, sides: 6,
+      name: '2d6', terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'PbtA', categories: [], thresholds: [],
       minMod: 0, maxMod: 0,
     });
@@ -255,7 +253,7 @@ describe('IndexedDB persistence', () => {
 
   it('createDiceThreshold auto-increments ids', async () => {
     const config = {
-      name: '2d6', count: 2, sides: 6,
+      name: '2d6', terms: [{ sign: '+' as const, count: 2, sides: 6 }],
       presetName: 'PbtA', categories: [], thresholds: [],
       minMod: 0, maxMod: 0,
     };
@@ -268,7 +266,7 @@ describe('IndexedDB persistence', () => {
 
   it('createDiceThreshold round-trips with criticals field', async () => {
     const config = {
-      name: '1d20', count: 1, sides: 20,
+      name: '1d20', terms: [{ sign: '+' as const, count: 1, sides: 20 }],
       presetName: 'D&D',
       categories: [
         { label: 'Fail', color: '#ff0000' },
@@ -440,7 +438,7 @@ describe('v1 to v2 migration', () => {
 
     // The new auto-increment store exists and accepts entries
     const id = await createDiceThreshold({
-      name: '2d6', count: 2, sides: 6,
+      name: '2d6', terms: [{ sign: '+', count: 2, sides: 6 }],
       presetName: 'PbtA', categories: [], thresholds: [7, 10],
       minMod: -2, maxMod: 5,
     });
@@ -499,7 +497,7 @@ describe('v1 to v2 migration', () => {
   });
 });
 
-describe('v3 to v4 migration', () => {
+describe('v3 to v5 migration', () => {
   beforeEach(async () => {
     const dbs = await indexedDB.databases();
     await Promise.all(
@@ -517,7 +515,7 @@ describe('v3 to v4 migration', () => {
     );
   });
 
-  it('preserves diceThresholds records from v3', async () => {
+  it('migrates diceThresholds records from v3 (count/sides → terms)', async () => {
     // Create a v3 database with a diceThresholds record
     const v3req = indexedDB.open('dice-visualizer', 3);
     await new Promise<void>((resolve) => {
@@ -545,11 +543,14 @@ describe('v3 to v4 migration', () => {
       };
     });
 
-    // Open with v4 — record should survive
+    // Open with v5 — record should be migrated to terms
     const loaded = await loadDiceThresholds(1);
     expect(loaded).not.toBeNull();
     expect(loaded!.name).toBe('2d6');
     expect(loaded!.thresholds).toEqual([7, 10]);
+    expect(loaded!.terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+    expect((loaded as any).count).toBeUndefined();
+    expect((loaded as any).sides).toBeUndefined();
     // New fields are absent on old records
     expect(loaded!.advantageMethod).toBeUndefined();
     expect(loaded!.disadvantageMethod).toBeUndefined();
@@ -634,8 +635,7 @@ describe('syncConfigsToPresets', () => {
   function makeConfig(overrides: Partial<DiceConfig> & { id: number }): DiceConfig {
     return {
       name: '2d6',
-      count: 2,
-      sides: 6,
+      terms: [{ sign: '+', count: 2, sides: 6 }],
       label: '2d6',
       thresholds: [7, 10],
       categories: [
@@ -711,11 +711,11 @@ describe('syncConfigsToPresets', () => {
 
   it('syncs builtin preset with mapped thresholds and criticals', () => {
     const configs = [
-      makeConfig({ id: 1, presetName: 'D&D', count: 1, sides: 20, thresholds: [99], criticals: { type: 'none' } }),
+      makeConfig({ id: 1, presetName: 'D&D', terms: [{ sign: '+', count: 1, sides: 20 }], thresholds: [99], criticals: { type: 'none' } }),
     ];
     syncConfigsToPresets(configs, []);
-    expect(configs[0].thresholds).toEqual(mapThresholds(DND_PRESET, 1, 20));
-    expect(configs[0].criticals).toEqual(mapCriticals(DND_PRESET, 1, 20));
+    expect(configs[0].thresholds).toEqual(mapThresholds(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]));
+    expect(configs[0].criticals).toEqual(mapCriticals(DND_PRESET, [{ sign: '+', count: 1, sides: 20 }]));
     expect(configs[0].categories).toEqual(DND_PRESET.categories);
     expect(configs[0].advantageMethod).toBe(DND_PRESET.advantageMethod);
     expect(configs[0].disadvantageMethod).toBe(DND_PRESET.disadvantageMethod);
@@ -729,9 +729,9 @@ describe('syncConfigsToPresets', () => {
     expect(configs[0].thresholds).toEqual([5]);
   });
 
-  it('preserves per-dice fields (name, count, sides, viewMode)', () => {
+  it('preserves per-dice fields (name, terms, viewMode)', () => {
     const configs = [
-      makeConfig({ id: 1, presetName: 'MyPreset', name: 'MyDice', count: 3, sides: 8, viewMode: 'table' }),
+      makeConfig({ id: 1, presetName: 'MyPreset', name: 'MyDice', terms: [{ sign: '+', count: 3, sides: 8 }], viewMode: 'table' }),
     ];
     const presets: SavedCustomPreset[] = [{
       id: 1,
@@ -748,8 +748,7 @@ describe('syncConfigsToPresets', () => {
     }];
     syncConfigsToPresets(configs, presets);
     expect(configs[0].name).toBe('MyDice');
-    expect(configs[0].count).toBe(3);
-    expect(configs[0].sides).toBe(8);
+    expect(configs[0].terms).toEqual([{ sign: '+', count: 3, sides: 8 }]);
     expect(configs[0].viewMode).toBe('table');
   });
 
@@ -783,5 +782,95 @@ describe('syncConfigsToPresets', () => {
     syncConfigsToPresets(configs, []);
     expect(configs[0].minMod).toBe(-10);
     expect(configs[0].maxMod).toBe(20);
+  });
+});
+
+describe('DB v4 → v5 migration', () => {
+  beforeEach(async () => {
+    const dbs = await indexedDB.databases();
+    await Promise.all(
+      dbs
+        .filter(db => db.name)
+        .map(
+          db =>
+            new Promise<void>((resolve, reject) => {
+              const req = indexedDB.deleteDatabase(db.name!);
+              req.onsuccess = () => resolve();
+              req.onerror = () => reject(req.error);
+              req.onblocked = () => resolve();
+            })
+        )
+    );
+  });
+
+  it('transforms count/sides records to terms', async () => {
+    // Open at v4, seed a record with the legacy shape
+    const v4 = indexedDB.open('dice-visualizer', 4);
+    await new Promise<void>((resolve, reject) => {
+      v4.onupgradeneeded = () => {
+        const db = v4.result;
+        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
+        if (!db.objectStoreNames.contains('customPresets')) db.createObjectStore('customPresets', { keyPath: 'id', autoIncrement: true });
+        if (!db.objectStoreNames.contains('diceThresholds')) db.createObjectStore('diceThresholds', { keyPath: 'id', autoIncrement: true });
+      };
+      v4.onsuccess = () => {
+        const db = v4.result;
+        const tx = db.transaction('diceThresholds', 'readwrite');
+        const req = tx.objectStore('diceThresholds').add({
+          name: '2d6',
+          count: 2,
+          sides: 6,
+          presetName: 'PbtA',
+          thresholds: [7, 10],
+          categories: [],
+          minMod: -2,
+          maxMod: 5,
+        });
+        req.onsuccess = () => { db.close(); resolve(); };
+        req.onerror = () => reject(req.error);
+      };
+      v4.onerror = () => reject(v4.error);
+    });
+
+    // Open at v5 — migration should transform the record
+    const db = await openDB();
+    const tx = db.transaction('diceThresholds', 'readonly');
+    const all = await new Promise<any[]>((resolve, reject) => {
+      const req = tx.objectStore('diceThresholds').getAll();
+      req.onsuccess = () => { db.close(); resolve(req.result); };
+      req.onerror = () => reject(req.error);
+    });
+
+    expect(all).toHaveLength(1);
+    expect(all[0].terms).toEqual([{ sign: '+', count: 2, sides: 6 }]);
+    expect(all[0].count).toBeUndefined();
+    expect(all[0].sides).toBeUndefined();
+  });
+});
+
+describe('mapThresholds with multi-term', () => {
+  it('scales to first-group range only', () => {
+    // PBTA reference is 2d6 (range 2..12, thresholds [7, 10]).
+    // Target: 2d10 - 1d4 — should scale to first group's 2..20.
+    const result = mapThresholds(PBTA_PRESET, [
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '-', count: 1, sides: 4 },
+    ]);
+    const refSingle = mapThresholds(PBTA_PRESET, [
+      { sign: '+', count: 2, sides: 10 },
+    ]);
+    expect(result).toEqual(refSingle);
+  });
+});
+
+describe('mapCriticals with multi-term', () => {
+  it('scales natural crit values to first-group range only', () => {
+    // D&D reference is 1d20 (range 1..20, hit=20 miss=1).
+    // Target: 2d10 - 1d4 — first group 2d10 has range 2..20, so hit→20, miss→2.
+    const result = mapCriticals(DND_PRESET, [
+      { sign: '+', count: 2, sides: 10 },
+      { sign: '-', count: 1, sides: 4 },
+    ]);
+    expect(result).toEqual({ type: 'natural', hit: 20, miss: 2 });
   });
 });

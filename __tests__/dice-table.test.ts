@@ -5,7 +5,7 @@ import type { DiceConfig } from '../src/thresholds';
 import '../src/renderer';
 
 const config2d6: DiceConfig = {
-  count: 2, sides: 6, label: '2d6',
+  terms: [{ sign: '+', count: 2, sides: 6 }], label: '2d6',
   thresholds: [7, 10],
   categories: [
     { label: 'Miss', color: '#f87171' },
@@ -342,7 +342,7 @@ describe('DiceTableElement — doubles crit missing mode fallback', () => {
 
 describe('DiceTableElement — row values sum to 100%', () => {
   const condDoublesCfg: DiceConfig = {
-    count: 2, sides: 10, label: '2d10',
+    terms: [{ sign: '+', count: 2, sides: 10 }], label: '2d10',
     thresholds: [11, 16],
     categories: [
       { label: 'Miss', color: '#f87171' },

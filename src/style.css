@@ -215,6 +215,8 @@ dice-row {
 }
 
 .dice-notation-badge {
+  field-sizing: content;
+  min-width: 4ch;
   font-size: 11px;
   color: #888;
   background: #1a1a2e;
@@ -222,6 +224,14 @@ dice-row {
   border-radius: 4px;
   padding: 1px 6px;
   font-weight: 400;
+  font-family: inherit;
+  outline: none;
+  cursor: text;
+}
+
+.dice-notation-badge:focus {
+  outline: none;
+  border-color: #4ade80;
 }
 
 .dice-ranges {

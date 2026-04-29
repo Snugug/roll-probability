@@ -20,7 +20,7 @@ export interface ExportData {
   customPresets: SavedCustomPreset[];
 }
 
-const CURRENT_VERSION = 4;
+const CURRENT_VERSION = 5;
 
 async function loadAllDice(): Promise<SavedDiceThreshold[]> {
   const db = await openDB();
@@ -95,8 +95,16 @@ function validateExportData(data: unknown): data is ExportData {
     if (typeof die !== 'object' || die === null) return false;
     const d = die as Record<string, unknown>;
     if (typeof d.name !== 'string') return false;
-    if (typeof d.count !== 'number') return false;
-    if (typeof d.sides !== 'number') return false;
+    if (!Array.isArray(d.terms)) return false;
+    if (d.terms.length < 1) return false;
+    for (let i = 0; i < d.terms.length; i++) {
+      const t = d.terms[i] as Record<string, unknown>;
+      if (typeof t !== 'object' || t === null) return false;
+      if (t.sign !== '+' && t.sign !== '-') return false;
+      if (typeof t.count !== 'number' || t.count < 1) return false;
+      if (typeof t.sides !== 'number' || t.sides < 2) return false;
+      if (i === 0 && t.sign !== '+') return false;
+    }
     if (!Array.isArray(d.thresholds)) return false;
     if (!Array.isArray(d.categories)) return false;
     if (typeof d.minMod !== 'number') return false;
@@ -130,21 +138,46 @@ export async function importConfig(file: File): Promise<ImportResult> {
     return { ok: false, error: 'Not a valid dice config file' };
   }
 
-  if (!validateExportData(parsed)) {
+  if (typeof parsed !== 'object' || parsed === null) {
     return { ok: false, error: 'Not a valid dice config file' };
   }
 
-  if (parsed.version < 3) {
+  const versioned = parsed as { version?: unknown };
+  if (typeof versioned.version !== 'number') {
+    return { ok: false, error: 'Not a valid dice config file' };
+  }
+
+  if (versioned.version < 3) {
     return { ok: false, error: 'Something went wrong' };
   }
 
-  // Version 3 -> 4 migration is a no-op (same data shape)
-  if (parsed.version === 3) {
-    parsed.version = 4;
+  if (versioned.version === 3) {
+    (versioned as { version: number }).version = 4;
   }
 
-  if (parsed.version !== CURRENT_VERSION) {
+  if (versioned.version === 4) {
+    const obj = versioned as { dice?: unknown };
+    if (Array.isArray(obj.dice)) {
+      for (const die of obj.dice) {
+        if (typeof die !== 'object' || die === null) continue;
+        const d = die as Record<string, unknown>;
+        if (Array.isArray(d.terms)) continue;
+        if (typeof d.count === 'number' && typeof d.sides === 'number') {
+          d.terms = [{ sign: '+', count: d.count, sides: d.sides }];
+          delete d.count;
+          delete d.sides;
+        }
+      }
+    }
+    (versioned as { version: number }).version = 5;
+  }
+
+  if (versioned.version !== CURRENT_VERSION) {
     return { ok: false, error: 'Something went wrong' };
+  }
+
+  if (!validateExportData(parsed)) {
+    return { ok: false, error: 'Not a valid dice config file' };
   }
 
   return { ok: true, data: parsed };

@@ -5,7 +5,7 @@ import { BarColumn } from '../src/components/bar-column';
 import '../src/renderer'; // registers custom elements
 
 const config2d6: DiceConfig = {
-  count: 2, sides: 6, label: '2d6',
+  terms: [{ sign: '+', count: 2, sides: 6 }], label: '2d6',
   thresholds: [7, 10],
   categories: [
     { label: 'Miss', color: '#f87171' },
@@ -96,7 +96,7 @@ describe('computeViewData', () => {
 import { BarChartView } from '../src/components/bar-chart-view';
 
 const config2d6ForView: DiceConfig = {
-  count: 2, sides: 6, label: '2d6',
+  terms: [{ sign: '+', count: 2, sides: 6 }], label: '2d6',
   thresholds: [7, 10],
   categories: [
     { label: 'Miss', color: '#f87171' },

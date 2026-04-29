@@ -1,4 +1,4 @@
-import { parseDiceNotation } from './engine';
+import { parseDiceExpression, formatDiceExpression } from './engine';
 import {
   PBTA_PRESET,
   mapThresholds,
@@ -20,13 +20,13 @@ import { showToast } from './components/toast';
 import './style.css';
 
 function buildConfig(label: string): Omit<DiceConfig, 'id'> {
-  const parsed = parseDiceNotation(label)!;
-  const thresholds = mapThresholds(PBTA_PRESET, parsed.count, parsed.sides);
+  const terms = parseDiceExpression(label)!;
+  const canonical = formatDiceExpression(terms);
+  const thresholds = mapThresholds(PBTA_PRESET, terms);
   return {
-    count: parsed.count,
-    sides: parsed.sides,
-    label,
-    name: label,
+    terms,
+    label: canonical,
+    name: canonical,
     thresholds,
     categories: PBTA_PRESET.categories.map(c => ({ ...c })),
     criticals: PBTA_PRESET.criticals,
@@ -44,9 +44,8 @@ async function buildConfigWithSaved(id: number): Promise<DiceConfig | null> {
   return {
     id: saved.id!,
     name: saved.name,
-    count: saved.count,
-    sides: saved.sides,
-    label: saved.count + 'd' + saved.sides,
+    terms: saved.terms,
+    label: formatDiceExpression(saved.terms),
     thresholds: saved.thresholds,
     categories: saved.categories,
     criticals: saved.criticals ?? { type: 'none' },
@@ -63,8 +62,7 @@ async function createAndSaveConfig(label: string): Promise<DiceConfig> {
   const config = buildConfig(label);
   const saved: Omit<SavedDiceThreshold, 'id'> = {
     name: config.name,
-    count: config.count,
-    sides: config.sides,
+    terms: config.terms,
     presetName: PBTA_PRESET.name,
     thresholds: config.thresholds,
     categories: config.categories,
@@ -179,8 +177,7 @@ export async function init(): Promise<void> {
     saveDiceThresholds({
       id: config.id,
       name: config.name,
-      count: config.count,
-      sides: config.sides,
+      terms: config.terms,
       presetName,
       categories: config.categories,
       thresholds: config.thresholds,
@@ -208,8 +205,7 @@ export async function init(): Promise<void> {
       saveDiceThresholds({
         id: config.id,
         name: config.name,
-        count: config.count,
-        sides: config.sides,
+        terms: config.terms,
         presetName: config.presetName ?? PBTA_PRESET.name,
         categories: config.categories,
         thresholds: config.thresholds,
@@ -234,10 +230,10 @@ export async function init(): Promise<void> {
     const raw = diceInput.value.trim().toLowerCase();
     if (!raw) return;
 
-    const parsed = parseDiceNotation(raw);
+    const parsed = parseDiceExpression(raw);
     if (!parsed) return;
 
-    const label = parsed.count + 'd' + parsed.sides;
+    const label = formatDiceExpression(parsed);
     const config = await createAndSaveConfig(label);
     diceConfigs.push(config);
     diceInput.value = '';
