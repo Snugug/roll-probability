@@ -133,17 +133,22 @@ export class DiceRowElement extends HTMLElement {
       if (!draggedRow || draggedRow === this) return;
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-      const rect = this.getBoundingClientRect();
-      const before = e.clientY < rect.top + rect.height / 2;
-      this.classList.toggle('drop-before', before);
-      this.classList.toggle('drop-after', !before);
+      // Direction-aware: dragging down shows the drop line below the
+      // hovered row; dragging up shows it above. The indicator is always
+      // on the far side from the dragged row, so it can never point to
+      // the slot the row already occupies.
+      const targetFollowsDragged =
+        (draggedRow.compareDocumentPosition(this) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      this.classList.toggle('drop-after', targetFollowsDragged);
+      this.classList.toggle('drop-before', !targetFollowsDragged);
     });
 
     this.addEventListener('drop', (e) => {
       if (!draggedRow || draggedRow === this) return;
       e.preventDefault();
-      const rect = this.getBoundingClientRect();
-      const position: 'before' | 'after' = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+      const targetFollowsDragged =
+        (draggedRow.compareDocumentPosition(this) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      const position: 'before' | 'after' = targetFollowsDragged ? 'after' : 'before';
       const fromId = draggedRow.config.id;
       const toId = this.config.id;
       this.classList.remove('drop-before', 'drop-after');
