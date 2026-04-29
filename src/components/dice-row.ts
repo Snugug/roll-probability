@@ -6,6 +6,19 @@ import { DiceTableElement } from './dice-table';
 import { buildDialogContent, renderCritSubInputs } from './dialog-builder';
 import { createGearSvg, createTableSvg, createBarChartSvg } from './icons';
 
+export function computeInsertIndex(
+  fromIdx: number,
+  toIdx: number,
+  position: 'before' | 'after'
+): number {
+  if (fromIdx === toIdx) return fromIdx;
+  if (position === 'after' && toIdx === fromIdx - 1) return fromIdx;
+  if (position === 'before' && toIdx === fromIdx + 1) return fromIdx;
+
+  const adjusted = toIdx > fromIdx ? toIdx - 1 : toIdx;
+  return position === 'before' ? adjusted : adjusted + 1;
+}
+
 export class DiceRowElement extends HTMLElement {
   config!: DiceConfig;
   showAdvantage = true;
