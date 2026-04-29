@@ -22,6 +22,8 @@ export interface DiceReorderDetail {
   position: 'before' | 'after';
 }
 
+let draggedRow: DiceRowElement | null = null;
+
 export class DiceRowElement extends HTMLElement {
   config!: DiceConfig;
   showAdvantage = true;
@@ -48,6 +50,7 @@ export class DiceRowElement extends HTMLElement {
 
   connectedCallback() {
     this.dataset.id = String(this.config.id);
+    this.draggable = true;
     this._state = new ThresholdEditorState(this.config, (kind) => {
       if (kind === 'structure') {
         this._buildDialogContent();
@@ -86,6 +89,64 @@ export class DiceRowElement extends HTMLElement {
     header.appendChild(gearBtn);
 
     this.appendChild(header);
+
+    let dragEnterCounter = 0;
+
+    this.addEventListener('dragstart', (e) => {
+      draggedRow = this;
+      this.classList.add('dragging');
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(this.config.id));
+      }
+    });
+
+    this.addEventListener('dragend', () => {
+      this.classList.remove('dragging');
+      draggedRow = null;
+      this.parentElement?.querySelectorAll('dice-row.drop-before, dice-row.drop-after')
+        .forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    });
+
+    this.addEventListener('dragenter', (e) => {
+      if (!draggedRow || draggedRow === this) return;
+      e.preventDefault();
+      dragEnterCounter++;
+    });
+
+    this.addEventListener('dragleave', () => {
+      if (!draggedRow || draggedRow === this) return;
+      dragEnterCounter--;
+      if (dragEnterCounter <= 0) {
+        dragEnterCounter = 0;
+        this.classList.remove('drop-before', 'drop-after');
+      }
+    });
+
+    this.addEventListener('dragover', (e) => {
+      if (!draggedRow || draggedRow === this) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      const rect = this.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      this.classList.toggle('drop-before', before);
+      this.classList.toggle('drop-after', !before);
+    });
+
+    this.addEventListener('drop', (e) => {
+      if (!draggedRow || draggedRow === this) return;
+      e.preventDefault();
+      const rect = this.getBoundingClientRect();
+      const position: 'before' | 'after' = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+      const fromId = draggedRow.config.id;
+      const toId = this.config.id;
+      this.classList.remove('drop-before', 'drop-after');
+      dragEnterCounter = 0;
+      this.dispatchEvent(new CustomEvent('dice-reorder', {
+        detail: { fromId, toId, position },
+        bubbles: true,
+      }));
+    });
 
     this._dialog = document.createElement('dialog');
     this._dialog.id = 'dialog-' + this.config.id;
@@ -171,6 +232,13 @@ export class DiceRowElement extends HTMLElement {
         nameInput.value = lastCommittedName;
         nameInput.blur();
       }
+    });
+
+    nameInput.addEventListener('mousedown', () => {
+      this.draggable = false;
+      document.addEventListener('mouseup', () => {
+        this.draggable = true;
+      }, { once: true });
     });
 
     return nameInput;

@@ -1013,3 +1013,38 @@ dialog::backdrop {
 .confirm-replace:hover {
   background: #ef444455;
 }
+
+/* ── Drag & Drop Reorder ── */
+
+dice-row {
+  cursor: grab;
+  position: relative;
+}
+
+dice-row.dragging {
+  cursor: grabbing;
+  opacity: 0.4;
+}
+
+dice-row.drop-before::before,
+dice-row.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #4ade80;
+  pointer-events: none;
+}
+
+dice-row.drop-before::before {
+  top: -6px;
+}
+
+dice-row.drop-after::after {
+  bottom: -6px;
+}
+
+.dice-name-input {
+  cursor: text;
+}
