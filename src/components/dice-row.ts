@@ -66,6 +66,12 @@ export class DiceRowElement extends HTMLElement {
     header.className = 'dice-header';
 
     const nameInput = this._createNameInput();
+    nameInput.addEventListener('mousedown', () => {
+      this.draggable = false;
+      document.addEventListener('mouseup', () => {
+        this.draggable = true;
+      }, { once: true });
+    });
     header.appendChild(nameInput);
 
     this._renderRangeItems(header);
@@ -232,13 +238,6 @@ export class DiceRowElement extends HTMLElement {
         nameInput.value = lastCommittedName;
         nameInput.blur();
       }
-    });
-
-    nameInput.addEventListener('mousedown', () => {
-      this.draggable = false;
-      document.addEventListener('mouseup', () => {
-        this.draggable = true;
-      }, { once: true });
     });
 
     return nameInput;
