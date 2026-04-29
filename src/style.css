@@ -215,6 +215,8 @@ dice-row {
 }
 
 .dice-notation-badge {
+  field-sizing: content;
+  min-width: 4ch;
   font-size: 11px;
   color: #888;
   background: #1a1a2e;
