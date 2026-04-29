@@ -14,7 +14,7 @@ import {
   type SavedDiceThreshold,
 } from './thresholds';
 import { renderPage } from './renderer';
-import { computeInsertIndex } from './components/dice-row';
+import { computeInsertIndex, type DiceReorderDetail } from './components/dice-row';
 import { createDownloadSvg, createUploadSvg } from './components/icons';
 import { exportConfig, importConfig, applyImport } from './import-export';
 import { showToast } from './components/toast';
@@ -106,11 +106,7 @@ export async function init(): Promise<void> {
   const rowsContainer = document.getElementById('dice-rows')!;
 
   rowsContainer.addEventListener('dice-reorder', (e) => {
-    const detail = (e as CustomEvent).detail as {
-      fromId: number;
-      toId: number;
-      position: 'before' | 'after';
-    };
+    const detail = (e as CustomEvent<DiceReorderDetail>).detail;
     const { fromId, toId, position } = detail;
 
     const fromIdx = diceConfigs.findIndex(c => c.id === fromId);

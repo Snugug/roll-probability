@@ -748,10 +748,11 @@ describe('main — dice reorder', () => {
     const rows = rowsContainer.querySelectorAll('dice-row');
     expect(rows.length).toBe(3);
 
-    rows[0].dispatchEvent(new CustomEvent('dice-reorder', {
-      detail: { fromId: id1, toId: id3, position: 'after' },
-      bubbles: true,
-    }));
+    rowsContainer.querySelector(`dice-row[data-id="${id1}"]`)!
+      .dispatchEvent(new CustomEvent('dice-reorder', {
+        detail: { fromId: id1, toId: id3, position: 'after' },
+        bubbles: true,
+      }));
 
     await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -794,5 +795,8 @@ describe('main — dice reorder', () => {
     expect(remaining.length).toBe(2);
     const remainingIds = Array.from(remaining).map(r => r.getAttribute('data-id'));
     expect(remainingIds).toEqual([String(id2), String(id3)]);
+
+    const settingsAfterDelete = await loadSettings();
+    expect(settingsAfterDelete!.diceList).toEqual([id2, id3]);
   });
 });

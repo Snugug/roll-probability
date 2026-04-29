@@ -16,6 +16,12 @@ export function computeInsertIndex(
   return position === 'before' ? adjusted : adjusted + 1;
 }
 
+export interface DiceReorderDetail {
+  fromId: number;
+  toId: number;
+  position: 'before' | 'after';
+}
+
 export class DiceRowElement extends HTMLElement {
   config!: DiceConfig;
   showAdvantage = true;
