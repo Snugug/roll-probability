@@ -12,9 +12,6 @@ export function computeInsertIndex(
   position: 'before' | 'after'
 ): number {
   if (fromIdx === toIdx) return fromIdx;
-  if (position === 'after' && toIdx === fromIdx - 1) return fromIdx;
-  if (position === 'before' && toIdx === fromIdx + 1) return fromIdx;
-
   const adjusted = toIdx > fromIdx ? toIdx - 1 : toIdx;
   return position === 'before' ? adjusted : adjusted + 1;
 }

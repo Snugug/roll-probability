@@ -38,4 +38,12 @@ describe('computeInsertIndex', () => {
   it('drop at end: from=0 to=4 after → 4', () => {
     expect(computeInsertIndex(0, 4, 'after')).toBe(4);
   });
+
+  it('adjacent move up: from=2 to=1 before → 1', () => {
+    expect(computeInsertIndex(2, 1, 'before')).toBe(1);
+  });
+
+  it('adjacent move down: from=2 to=3 after → 3', () => {
+    expect(computeInsertIndex(2, 3, 'after')).toBe(3);
+  });
 });
