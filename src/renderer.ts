@@ -16,30 +16,27 @@ export function renderPage(
   configs: DiceConfig[],
   showAdvantage: boolean,
   showDisadvantage: boolean,
-  onConfigChange?: (index: number, config: DiceConfig, presetName: string) => void,
+  onConfigChange?: (config: DiceConfig, presetName: string) => void,
   onDialogClose?: () => void | Promise<void>,
-  onDelete?: (index: number) => void
+  onDelete?: (id: number) => void
 ): void {
   container.replaceChildren();
 
-  for (let i = 0; i < configs.length; i++) {
-    const config = configs[i];
+  for (const config of configs) {
     const row = document.createElement('dice-row') as DiceRowElement;
     row.config = config;
     row.showAdvantage = showAdvantage;
     row.showDisadvantage = showDisadvantage;
     if (onConfigChange) {
-      const idx = i;
       row.onConfigChange = (cfg, presetName) => {
-        onConfigChange(idx, cfg, presetName);
+        onConfigChange(cfg, presetName);
       };
     }
     if (onDialogClose) {
       row.onDialogClose = onDialogClose;
     }
     if (onDelete) {
-      const idx = i;
-      row.onDelete = () => { onDelete(idx); };
+      row.onDelete = () => { onDelete(config.id); };
     }
     container.appendChild(row);
   }
