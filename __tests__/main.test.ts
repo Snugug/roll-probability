@@ -721,3 +721,82 @@ describe('main — import/export buttons', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('main — dice reorder', () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    await clearIndexedDB();
+    localStorage.clear();
+    document.body.replaceChildren();
+    setupDOM();
+  });
+
+  it('reorders dice rows and persists new order on dice-reorder event', async () => {
+    const id1 = await createTestDiceEntry('2d6');
+    const id2 = await createTestDiceEntry('2d8');
+    const id3 = await createTestDiceEntry('2d10');
+    await saveSettings({
+      diceList: [id1, id2, id3],
+      showAdvantage: true,
+      showDisadvantage: true,
+    });
+
+    const init = await loadInit();
+    await init();
+
+    const rowsContainer = document.getElementById('dice-rows')!;
+    const rows = rowsContainer.querySelectorAll('dice-row');
+    expect(rows.length).toBe(3);
+
+    rowsContainer.querySelector(`dice-row[data-id="${id1}"]`)!
+      .dispatchEvent(new CustomEvent('dice-reorder', {
+        detail: { fromId: id1, toId: id3, position: 'after' },
+        bubbles: true,
+      }));
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const reordered = rowsContainer.querySelectorAll('dice-row');
+    expect(reordered[0].getAttribute('data-id')).toBe(String(id2));
+    expect(reordered[1].getAttribute('data-id')).toBe(String(id3));
+    expect(reordered[2].getAttribute('data-id')).toBe(String(id1));
+
+    const settings = await loadSettings();
+    expect(settings!.diceList).toEqual([id2, id3, id1]);
+  });
+
+  it('deletes the right row after reorder (id-based lookup)', async () => {
+    const id1 = await createTestDiceEntry('2d6');
+    const id2 = await createTestDiceEntry('2d8');
+    const id3 = await createTestDiceEntry('2d10');
+    await saveSettings({
+      diceList: [id1, id2, id3],
+      showAdvantage: true,
+      showDisadvantage: true,
+    });
+
+    const init = await loadInit();
+    await init();
+
+    const rowsContainer = document.getElementById('dice-rows')!;
+
+    rowsContainer.querySelector(`dice-row[data-id="${id1}"]`)!
+      .dispatchEvent(new CustomEvent('dice-reorder', {
+        detail: { fromId: id1, toId: id3, position: 'after' },
+        bubbles: true,
+      }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const targetRow = rowsContainer.querySelector(`dice-row[data-id="${id1}"]`) as any;
+    targetRow.onDelete?.();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const remaining = rowsContainer.querySelectorAll('dice-row');
+    expect(remaining.length).toBe(2);
+    const remainingIds = Array.from(remaining).map(r => r.getAttribute('data-id'));
+    expect(remainingIds).toEqual([String(id2), String(id3)]);
+
+    const settingsAfterDelete = await loadSettings();
+    expect(settingsAfterDelete!.diceList).toEqual([id2, id3]);
+  });
+});

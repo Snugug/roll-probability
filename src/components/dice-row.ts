@@ -6,6 +6,24 @@ import { DiceTableElement } from './dice-table';
 import { buildDialogContent, renderCritSubInputs } from './dialog-builder';
 import { createGearSvg, createTableSvg, createBarChartSvg } from './icons';
 
+export function computeInsertIndex(
+  fromIdx: number,
+  toIdx: number,
+  position: 'before' | 'after'
+): number {
+  if (fromIdx === toIdx) return fromIdx;
+  const adjusted = toIdx > fromIdx ? toIdx - 1 : toIdx;
+  return position === 'before' ? adjusted : adjusted + 1;
+}
+
+export interface DiceReorderDetail {
+  fromId: number;
+  toId: number;
+  position: 'before' | 'after';
+}
+
+let draggedRow: DiceRowElement | null = null;
+
 export class DiceRowElement extends HTMLElement {
   config!: DiceConfig;
   showAdvantage = true;
@@ -31,6 +49,8 @@ export class DiceRowElement extends HTMLElement {
   }
 
   connectedCallback() {
+    this.dataset.id = String(this.config.id);
+    this.draggable = true;
     this._state = new ThresholdEditorState(this.config, (kind) => {
       if (kind === 'structure') {
         this._buildDialogContent();
@@ -46,6 +66,12 @@ export class DiceRowElement extends HTMLElement {
     header.className = 'dice-header';
 
     const nameInput = this._createNameInput();
+    nameInput.addEventListener('mousedown', () => {
+      this.draggable = false;
+      document.addEventListener('mouseup', () => {
+        this.draggable = true;
+      }, { once: true });
+    });
     header.appendChild(nameInput);
 
     this._renderRangeItems(header);
@@ -69,6 +95,69 @@ export class DiceRowElement extends HTMLElement {
     header.appendChild(gearBtn);
 
     this.appendChild(header);
+
+    let dragEnterCounter = 0;
+
+    this.addEventListener('dragstart', (e) => {
+      draggedRow = this;
+      this.classList.add('dragging');
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(this.config.id));
+      }
+    });
+
+    this.addEventListener('dragend', () => {
+      this.classList.remove('dragging');
+      draggedRow = null;
+      this.parentElement?.querySelectorAll('dice-row.drop-before, dice-row.drop-after')
+        .forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    });
+
+    this.addEventListener('dragenter', (e) => {
+      if (!draggedRow || draggedRow === this) return;
+      e.preventDefault();
+      dragEnterCounter++;
+    });
+
+    this.addEventListener('dragleave', () => {
+      if (!draggedRow || draggedRow === this) return;
+      dragEnterCounter--;
+      if (dragEnterCounter <= 0) {
+        dragEnterCounter = 0;
+        this.classList.remove('drop-before', 'drop-after');
+      }
+    });
+
+    this.addEventListener('dragover', (e) => {
+      if (!draggedRow || draggedRow === this) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      // Direction-aware: dragging down shows the drop line below the
+      // hovered row; dragging up shows it above. The indicator is always
+      // on the far side from the dragged row, so it can never point to
+      // the slot the row already occupies.
+      const targetFollowsDragged =
+        (draggedRow.compareDocumentPosition(this) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      this.classList.toggle('drop-after', targetFollowsDragged);
+      this.classList.toggle('drop-before', !targetFollowsDragged);
+    });
+
+    this.addEventListener('drop', (e) => {
+      if (!draggedRow || draggedRow === this) return;
+      e.preventDefault();
+      const targetFollowsDragged =
+        (draggedRow.compareDocumentPosition(this) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      const position: 'before' | 'after' = targetFollowsDragged ? 'after' : 'before';
+      const fromId = draggedRow.config.id;
+      const toId = this.config.id;
+      this.classList.remove('drop-before', 'drop-after');
+      dragEnterCounter = 0;
+      this.dispatchEvent(new CustomEvent('dice-reorder', {
+        detail: { fromId, toId, position },
+        bubbles: true,
+      }));
+    });
 
     this._dialog = document.createElement('dialog');
     this._dialog.id = 'dialog-' + this.config.id;

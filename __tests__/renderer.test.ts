@@ -444,7 +444,7 @@ describe('dialog interactivity', () => {
   it('threshold change calls onConfigChange callback', async () => {
     let callbackConfig: DiceConfig | null = null;
     let callbackPreset = '';
-    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false, (_idx, cfg, preset) => {
+    renderPage(container, [deepConfig(config2d6, { minMod: 0, maxMod: 0 })], false, false, (cfg, preset) => {
       callbackConfig = cfg;
       callbackPreset = preset;
     });
@@ -921,7 +921,7 @@ describe('view toggle', () => {
 
   it('sets config.viewMode on toggle and calls onConfigChange', () => {
     let savedConfig: DiceConfig | null = null;
-    renderPage(container, [{ ...config2d6 }], false, false, (_idx, cfg) => { savedConfig = cfg; });
+    renderPage(container, [{ ...config2d6 }], false, false, (cfg) => { savedConfig = cfg; });
     const toggleBtn = container.querySelector('.view-toggle-btn') as HTMLButtonElement;
     toggleBtn.click();
     expect(savedConfig).not.toBeNull();
@@ -942,7 +942,7 @@ describe('view toggle', () => {
 
   it('dialog toggle switches view mode and updates main view', () => {
     let savedConfig: DiceConfig | null = null;
-    renderPage(container, [{ ...config2d6 }], false, false, (_idx, cfg) => { savedConfig = cfg; });
+    renderPage(container, [{ ...config2d6 }], false, false, (cfg) => { savedConfig = cfg; });
     const row = container.querySelector('dice-row') as any;
     const dialogToggle = row._dialog.querySelector('.dialog-header .view-toggle-btn') as HTMLButtonElement;
     dialogToggle.click();
@@ -965,7 +965,7 @@ describe('view toggle', () => {
 describe('name input', () => {
   it('name input commits on blur and fires onConfigChange', () => {
     let savedConfig: DiceConfig | null = null;
-    renderPage(container, [{ ...config2d6 }], false, false, (_idx, cfg) => { savedConfig = cfg; });
+    renderPage(container, [{ ...config2d6 }], false, false, (cfg) => { savedConfig = cfg; });
     const input = container.querySelector('.dice-name-input') as HTMLInputElement;
     input.value = 'Attack Roll';
     input.dispatchEvent(new Event('blur'));
@@ -1037,12 +1037,12 @@ describe('delete button in dialog', () => {
   });
 
   it('delete button fires onDelete callback', () => {
-    let deletedIndex = -1;
-    renderPage(container, [{ ...config2d6 }], false, false, undefined, undefined, (idx) => { deletedIndex = idx; });
+    let deletedId = -1;
+    renderPage(container, [{ ...config2d6 }], false, false, undefined, undefined, (id) => { deletedId = id; });
     const row = container.querySelector('dice-row') as any;
     const deleteBtn = row._dialog.querySelector('.dialog-delete') as HTMLButtonElement;
     deleteBtn.click();
-    expect(deletedIndex).toBe(0);
+    expect(deletedId).toBe(config2d6.id);
   });
 });
 

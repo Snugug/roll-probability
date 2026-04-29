@@ -14,6 +14,7 @@ import {
   type SavedDiceThreshold,
 } from './thresholds';
 import { renderPage } from './renderer';
+import { computeInsertIndex, type DiceReorderDetail } from './components/dice-row';
 import { createDownloadSvg, createUploadSvg } from './components/icons';
 import { exportConfig, importConfig, applyImport } from './import-export';
 import { showToast } from './components/toast';
@@ -103,6 +104,24 @@ export async function init(): Promise<void> {
   let showDisadvantage = settings?.showDisadvantage ?? true;
 
   const rowsContainer = document.getElementById('dice-rows')!;
+
+  rowsContainer.addEventListener('dice-reorder', (e) => {
+    const detail = (e as CustomEvent<DiceReorderDetail>).detail;
+    const { fromId, toId, position } = detail;
+
+    const fromIdx = diceConfigs.findIndex(c => c.id === fromId);
+    const toIdx = diceConfigs.findIndex(c => c.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const insertIdx = computeInsertIndex(fromIdx, toIdx, position);
+    if (insertIdx === fromIdx) return;
+
+    const [moved] = diceConfigs.splice(fromIdx, 1);
+    diceConfigs.splice(insertIdx, 0, moved);
+
+    update();
+  });
+
   const advToggle = document.getElementById('adv-toggle') as HTMLButtonElement;
   const disToggle = document.getElementById('dis-toggle') as HTMLButtonElement;
   const diceInput = document.getElementById('dice-input') as HTMLInputElement;
@@ -172,8 +191,9 @@ export async function init(): Promise<void> {
     });
   }
 
-  function handleConfigChange(index: number, config: DiceConfig, presetName: string): void {
-    diceConfigs[index] = config;
+  function handleConfigChange(config: DiceConfig, presetName: string): void {
+    // config is the same object reference held in diceConfigs (rows mutate
+    // in place), so no array re-assignment is needed — just persist.
     saveDiceThresholds({
       id: config.id,
       name: config.name,
@@ -190,10 +210,11 @@ export async function init(): Promise<void> {
     }).catch(() => {});
   }
 
-  function handleDelete(index: number): void {
-    const config = diceConfigs[index];
-    deleteDiceThreshold(config.id).catch(() => {});
-    diceConfigs.splice(index, 1);
+  function handleDelete(id: number): void {
+    const idx = diceConfigs.findIndex(c => c.id === id);
+    if (idx === -1) return;
+    deleteDiceThreshold(id).catch(() => {});
+    diceConfigs.splice(idx, 1);
     update();
   }
 
