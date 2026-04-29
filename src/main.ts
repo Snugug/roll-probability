@@ -119,16 +119,7 @@ export async function init(): Promise<void> {
     const [moved] = diceConfigs.splice(fromIdx, 1);
     diceConfigs.splice(insertIdx, 0, moved);
 
-    const fromRow = rowsContainer.querySelector(`dice-row[data-id="${fromId}"]`);
-    const toRow = rowsContainer.querySelector(`dice-row[data-id="${toId}"]`);
-    if (fromRow && toRow) {
-      rowsContainer.insertBefore(
-        fromRow,
-        position === 'before' ? toRow : toRow.nextSibling
-      );
-    }
-
-    save();
+    update();
   });
 
   const advToggle = document.getElementById('adv-toggle') as HTMLButtonElement;
